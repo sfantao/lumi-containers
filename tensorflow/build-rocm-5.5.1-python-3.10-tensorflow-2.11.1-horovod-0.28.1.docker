@@ -1,0 +1,49 @@
+#
+# Install conda environment
+# 
+ARG PYTHON_VERSION
+RUN $WITH_CONDA; set -eux ; \
+  conda create -n tensorflow python=$PYTHON_VERSION
+  
+ENV WITH_CONDA "source /opt/miniconda3/bin/activate tensorflow"
+
+ARG TENSORFLOW_VERSION
+RUN $WITH_CONDA; set -eux ; \
+  pip install tensorflow-rocm==$TENSORFLOW_VERSION
+
+#
+# Install horovod
+#
+ARG HOROVOD_VERSION
+RUN $WITH_CONDA ; set -eux ; \
+  cd / ; \
+  curl -LO $CPE_URL ; \
+  tar -xf *.tar ; rm -rf *.tar ; \
+  cd $MPICH_PATH/../.. ; \
+  ln -s crayclang cray ; \
+  \
+  HOROVOD_WITHOUT_MXNET=1 \
+    HOROVOD_WITHOUT_PYTORCH=1 \
+    HOROVOD_GPU=ROCM \
+    HOROVOD_GPU_OPERATIONS=NCCL \
+    HOROVOD_WITHOUT_GLOO=1 \
+    HOROVOD_WITH_MPI=1 \
+    HOROVOD_WITH_TENSORFLOW=1 \
+    HOROVOD_ROCM_PATH=$ROCM_PATH \
+    HOROVOD_RCCL_HOME=$ROCM_PATH/rccl \
+    RCCL_INCLUDE_DIRS=$ROCM_PATH/rccl/include \
+    HOROVOD_RCCL_LIB=$ROCM_PATH/rccl/lib \
+    HCC_AMDGPU_TARGET=gfx90a \
+    CMAKE_PREFIX_PATH=$MPICH_PATH \
+    pip install --no-cache-dir --force-reinstall --verbose horovod==$HOROVOD_VERSION ; \
+    rm -rf /opt/mybuild; \
+    $REMOVE_CRAY_DEPS
+
+#
+# Install OpenNMT if requested
+#
+ARG OPENNMT_VERSION
+RUN $WITH_CONDA ; set -eux ; \
+  if [ -z "$OPENNMT_VERSION" ] ; then exit 0; fi ; \
+  pip install opennmt-tf==$OPENNMT_VERSION
+    

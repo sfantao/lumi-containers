@@ -1,0 +1,48 @@
+#!/bin/bash -ex
+
+cat > run.sh << EOF
+#!/bin/bash -e
+\$WITH_CONDA
+
+set -x
+
+# Report affinity
+echo "Rank \$SLURM_PROCID --> \$(taskset -p \$\$)"
+export ROCR_VISIBLE_DEVICES=\$SLURM_LOCALID
+
+cd \$ALPHAFOLD_PATH
+
+#run with single device
+
+#
+# T1049.fasta
+# T1050.fasta
+# T1044.fasta
+#
+python3 ./run_alphafold.py \
+  --fasta_paths=/datasets/test-fasta/T1044.fasta \
+  --model_preset=monomer \
+  --use_gpu_relax=True \
+  --benchmark=False \
+  --uniref90_database_path=/datasets/uniref90/uniref90.fasta \
+  --mgnify_database_path=/datasets/mgnify/mgy_clusters_2018_12.fa \
+  --pdb70_database_path=/datasets/pdb70/pdb70 \
+  --data_dir=/datasets \
+  --template_mmcif_dir=/datasets/pdb_mmcif/mmcif_files \
+  --obsolete_pdbs_path=/datasets/pdb_mmcif/obsolete.dat \
+  --small_bfd_database_path=/datasets/small_bfd/bfd-first_non_consensus_sequences.fasta \
+  --output_dir=/myrun/output1_\$SLURM_PROCID \
+  --max_template_date=2020-05-14 \
+  --db_preset=reduced_dbs \
+  --logtostderr \
+  --hhsearch_binary_path=\$HHSUITE_PATH/bin/hhsearch \
+  --hhblits_binary_path=\$HHSUITE_PATH/bin/hhblits
+
+EOF
+chmod +x run.sh 
+
+$SCMD \
+    -B $(pwd):/myrun \
+    -B /pfs/lustrep2/scratch/project_462000125/samantao/data-sets/alphafold:/datasets \
+    $1 \
+    /myrun/run.sh

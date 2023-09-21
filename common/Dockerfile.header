@@ -1,0 +1,42 @@
+#FROM registry.suse.com/bci/bci-base:15.3.17.20.5
+#FROM registry.suse.com/bci/bci-base:15.3.17.20.101
+FROM registry.suse.com/bci/bci-base:15.3.17.20.145
+
+ARG SERVER_PORT
+
+#
+# Disable BCI repros
+#
+
+RUN set -eux ; \
+  sed -i 's#enabled=1#enabled=0#g' /etc/zypp/repos.d/SLE_BCI.repo 
+
+RUN set -eux ; \
+  zypper -n addrepo http://download.opensuse.org/distribution/leap/15.3/repo/oss/ myrepo1 ; \
+  echo 'gpgcheck=0' >> /etc/zypp/repos.d/myrepo1.repo ; \
+  zypper -n addrepo https://download.opensuse.org/repositories/devel:/languages:/perl/SLE_15_SP3 myrepo2 ; \
+  echo 'gpgcheck=0' >> /etc/zypp/repos.d/myrepo2.repo
+  
+RUN set -eux ; \
+  sed -i 's#gpgcheck=1#gpgcheck=0#g' /etc/zypp/repos.d/*.repo
+
+#
+# Install build dependencies
+#
+RUN set -eux; \
+  zypper -n refresh ; \
+  zypper --no-gpg-checks -n install -y --force-resolution \
+    git cmake gcc10 gcc10-c++ gcc10-fortran zlib-devel numactl awk patch tar autoconf automake libtool libjson-c-devel graphviz ncurses-devel nano which ; \
+  zypper clean
+
+#
+# Cray info
+#
+ENV CPE_VERSION "23.03"
+ENV CPE_URL="http://localhost:$SERVER_PORT/cpe-$CPE_VERSION.tar"
+ENV LIBFABRIC_VERSION "1.15.2.0" 
+ENV LIBFABRIC_PATH /opt/cray/libfabric/$LIBFABRIC_VERSION
+ENV MPICH_PATH "/opt/cray/pe/mpich/8.1.25/ofi/crayclang/10.0"
+ENV LD_LIBRARY_PATH /opt/cray-deps:$LIBFABRIC_PATH/lib64:$MPICH_PATH/lib:/opt/cray/pe/lib64:/opt/cray/pe/lib64/cce
+
+ENV REMOVE_CRAY_DEPS 'rm -rf /opt/cray /opt/cray-deps /usr/lib64/libcxi.so*'

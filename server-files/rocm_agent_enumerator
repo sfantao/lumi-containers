@@ -1,0 +1,12 @@
+#!/bin/bash 
+cat << EOF      
+gfx000
+gfx90a
+gfx90a
+gfx90a
+gfx90a
+gfx90a
+gfx90a
+gfx90a
+gfx90a
+EOF

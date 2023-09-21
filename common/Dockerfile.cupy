@@ -1,0 +1,8 @@
+ENV CUPY_VERSION 12.2.0
+RUN $WITH_CONDA ; set -eux ; \
+  export HCC_AMDGPU_TARGET=gfx90a ; \
+  export CUPY_INSTALL_USE_HIP=1 ; \
+  export ROCM_HOME=$ROCM_PATH ; \
+  export CC=$ROCM_PATH/llvm/bin/clang ; \
+  export CXX=$ROCM_PATH/llvm/bin/clang++ ; \
+  pip install cupy==$CUPY_VERSION

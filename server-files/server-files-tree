@@ -1,0 +1,273 @@
+.
+├── opt
+│   └── cray
+│       ├── libfabric
+│       │   └── 1.15.2.0
+│       │       ├── bin
+│       │       │   ├── fi_info
+│       │       │   ├── fi_pingpong
+│       │       │   └── fi_strerror
+│       │       ├── include
+│       │       │   └── rdma
+│       │       │       ├── fabric.h
+│       │       │       ├── fi_atomic.h
+│       │       │       ├── fi_cm.h
+│       │       │       ├── fi_collective.h
+│       │       │       ├── fi_cxi_ext.h
+│       │       │       ├── fi_domain.h
+│       │       │       ├── fi_endpoint.h
+│       │       │       ├── fi_eq.h
+│       │       │       ├── fi_errno.h
+│       │       │       ├── fi_ext.h
+│       │       │       ├── fi_rma.h
+│       │       │       ├── fi_tagged.h
+│       │       │       └── fi_trigger.h
+│       │       ├── lib64
+│       │       │   ├── libfabric
+│       │       │   ├── libfabric.a
+│       │       │   ├── libfabric.so -> libfabric.so.1.18.2
+│       │       │   ├── libfabric.so.1 -> libfabric.so.1.18.2
+│       │       │   ├── libfabric.so.1.18.2
+│       │       │   └── pkgconfig
+│       │       │       └── libfabric.pc
+│       │       └── share
+│       │           └── man
+│       │               ├── man1
+│       │               │   ├── fi_info.1
+│       │               │   ├── fi_pingpong.1
+│       │               │   └── fi_strerror.1
+│       │               ├── man3
+│       │               │   ├── fi_accept.3
+│       │               │   ├── fi_alias.3
+│       │               │   ├── fi_allgather.3
+│       │               │   ├── fi_allreduce.3
+│       │               │   ├── fi_alltoall.3
+│       │               │   ├── fi_atomic.3
+│       │               │   ├── fi_atomicmsg.3
+│       │               │   ├── fi_atomicv.3
+│       │               │   ├── fi_atomic_valid.3
+│       │               │   ├── fi_av.3
+│       │               │   ├── fi_av_bind.3
+│       │               │   ├── fi_av_insert.3
+│       │               │   ├── fi_av_insertsvc.3
+│       │               │   ├── fi_av_lookup.3
+│       │               │   ├── fi_av_open.3
+│       │               │   ├── fi_av_remove.3
+│       │               │   ├── fi_av_set.3
+│       │               │   ├── fi_av_set_diff.3
+│       │               │   ├── fi_av_set_insert.3
+│       │               │   ├── fi_av_set_intersect.3
+│       │               │   ├── fi_av_set_remove.3
+│       │               │   ├── fi_av_set_union.3
+│       │               │   ├── fi_av_straddr.3
+│       │               │   ├── fi_barrier.3
+│       │               │   ├── fi_broadcast.3
+│       │               │   ├── fi_cancel.3
+│       │               │   ├── fi_close.3
+│       │               │   ├── fi_cm.3
+│       │               │   ├── fi_cntr.3
+│       │               │   ├── fi_cntr_add.3
+│       │               │   ├── fi_cntr_open.3
+│       │               │   ├── fi_cntr_read.3
+│       │               │   ├── fi_cntr_set.3
+│       │               │   ├── fi_cntr_wait.3
+│       │               │   ├── fi_collective.3
+│       │               │   ├── fi_compare_atomic.3
+│       │               │   ├── fi_compare_atomicmsg.3
+│       │               │   ├── fi_compare_atomicv.3
+│       │               │   ├── fi_compare_atomic_valid.3
+│       │               │   ├── fi_connect.3
+│       │               │   ├── fi_control.3
+│       │               │   ├── fi_cq.3
+│       │               │   ├── fi_cq_open.3
+│       │               │   ├── fi_cq_read.3
+│       │               │   ├── fi_cq_readerr.3
+│       │               │   ├── fi_cq_readfrom.3
+│       │               │   ├── fi_cq_signal.3
+│       │               │   ├── fi_cq_sread.3
+│       │               │   ├── fi_cq_sreadfrom.3
+│       │               │   ├── fi_cq_strerror.3
+│       │               │   ├── fi_domain.3
+│       │               │   ├── fi_domain_bind.3
+│       │               │   ├── fi_domain_query.3
+│       │               │   ├── fi_dupinfo.3
+│       │               │   ├── fi_enable.3
+│       │               │   ├── fi_endpoint.3
+│       │               │   ├── fi_ep.3
+│       │               │   ├── fi_ep_bind.3
+│       │               │   ├── fi_eq.3
+│       │               │   ├── fi_eq_open.3
+│       │               │   ├── fi_eq_read.3
+│       │               │   ├── fi_eq_readerr.3
+│       │               │   ├── fi_eq_sread.3
+│       │               │   ├── fi_eq_strerror.3
+│       │               │   ├── fi_eq_write.3
+│       │               │   ├── fi_errno.3
+│       │               │   ├── fi_fabric.3
+│       │               │   ├── fi_fetch_atomic.3
+│       │               │   ├── fi_fetch_atomicmsg.3
+│       │               │   ├── fi_fetch_atomicv.3
+│       │               │   ├── fi_fetch_atomic_valid.3
+│       │               │   ├── fi_freeinfo.3
+│       │               │   ├── fi_getinfo.3
+│       │               │   ├── fi_getname.3
+│       │               │   ├── fi_getopt.3
+│       │               │   ├── fi_getpeer.3
+│       │               │   ├── fi_inject.3
+│       │               │   ├── fi_inject_atomic.3
+│       │               │   ├── fi_injectdata.3
+│       │               │   ├── fi_inject_write.3
+│       │               │   ├── fi_inject_writedata.3
+│       │               │   ├── fi_join.3
+│       │               │   ├── fi_join_collective.3
+│       │               │   ├── fi_leave.3
+│       │               │   ├── fi_listen.3
+│       │               │   ├── fi_mr.3
+│       │               │   ├── fi_mr_bind.3
+│       │               │   ├── fi_mr_desc.3
+│       │               │   ├── fi_mr_key.3
+│       │               │   ├── fi_mr_reg.3
+│       │               │   ├── fi_mr_regattr.3
+│       │               │   ├── fi_mr_regv.3
+│       │               │   ├── fi_msg.3
+│       │               │   ├── fi_nic.3
+│       │               │   ├── fi_open.3
+│       │               │   ├── fi_open_ops.3
+│       │               │   ├── fi_passive_ep.3
+│       │               │   ├── fi_pep_bind.3
+│       │               │   ├── fi_poll.3
+│       │               │   ├── fi_poll_add.3
+│       │               │   ├── fi_poll_del.3
+│       │               │   ├── fi_poll_open.3
+│       │               │   ├── fi_provider.3
+│       │               │   ├── fi_query_atomic.3
+│       │               │   ├── fi_query_collective.3
+│       │               │   ├── fi_read.3
+│       │               │   ├── fi_readmsg.3
+│       │               │   ├── fi_readv.3
+│       │               │   ├── fi_recv.3
+│       │               │   ├── fi_recvmsg.3
+│       │               │   ├── fi_recvv.3
+│       │               │   ├── fi_reduce_scatter.3
+│       │               │   ├── fi_reject.3
+│       │               │   ├── fi_rma.3
+│       │               │   ├── fi_rx_addr.3
+│       │               │   ├── fi_rx_size_left.3
+│       │               │   ├── fi_scalable_ep_bind.3
+│       │               │   ├── fi_send.3
+│       │               │   ├── fi_senddata.3
+│       │               │   ├── fi_sendmsg.3
+│       │               │   ├── fi_sendv.3
+│       │               │   ├── fi_setname.3
+│       │               │   ├── fi_setopt.3
+│       │               │   ├── fi_shutdown.3
+│       │               │   ├── fi_strerror.3
+│       │               │   ├── fi_tagged.3
+│       │               │   ├── fi_tinject.3
+│       │               │   ├── fi_tinjectdata.3
+│       │               │   ├── fi_tostr.3
+│       │               │   ├── fi_trecv.3
+│       │               │   ├── fi_trecvmsg.3
+│       │               │   ├── fi_trecvv.3
+│       │               │   ├── fi_trigger.3
+│       │               │   ├── fi_trywait.3
+│       │               │   ├── fi_tsend.3
+│       │               │   ├── fi_tsenddata.3
+│       │               │   ├── fi_tsendmsg.3
+│       │               │   ├── fi_tsendv.3
+│       │               │   ├── fi_tx_size_left.3
+│       │               │   ├── fi_version.3
+│       │               │   ├── fi_wait.3
+│       │               │   ├── fi_wait_open.3
+│       │               │   ├── fi_write.3
+│       │               │   ├── fi_writedata.3
+│       │               │   ├── fi_writemsg.3
+│       │               │   └── fi_writev.3
+│       │               └── man7
+│       │                   ├── fabric.7
+│       │                   ├── fi_cxi.7
+│       │                   ├── fi_direct.7
+│       │                   ├── fi_hook.7
+│       │                   ├── fi_provider.7
+│       │                   ├── fi_rxm.7
+│       │                   ├── fi_tcp.7
+│       │                   └── fi_udp.7
+│       └── pe
+│           └── mpich
+│               └── 8.1.25
+│                   ├── gtl
+│                   │   └── lib
+│                   │       ├── libmpi_gtl_hsa.a
+│                   │       ├── libmpi_gtl_hsa.so -> libmpi_gtl_hsa.so.0.0.0
+│                   │       ├── libmpi_gtl_hsa.so.0 -> libmpi_gtl_hsa.so.0.0.0
+│                   │       └── libmpi_gtl_hsa.so.0.0.0
+│                   └── ofi
+│                       └── crayclang
+│                           └── 10.0
+│                               ├── bin
+│                               │   ├── cray_spawn_server
+│                               │   ├── mpic++ -> mpicxx
+│                               │   ├── mpicc
+│                               │   ├── mpichversion
+│                               │   ├── mpicxx
+│                               │   ├── mpif77 -> mpifort
+│                               │   ├── mpif90 -> mpifort
+│                               │   └── mpifort
+│                               ├── include
+│                               │   ├── cray_version.h
+│                               │   ├── MPI_BASE.mod
+│                               │   ├── MPI_C_INTERFACE_CDESC.mod
+│                               │   ├── MPI_C_INTERFACE_GLUE.mod
+│                               │   ├── MPI_C_INTERFACE.mod
+│                               │   ├── MPI_C_INTERFACE_NOBUF.mod
+│                               │   ├── MPI_C_INTERFACE_TYPES.mod
+│                               │   ├── MPI_CONSTANTS.mod
+│                               │   ├── MPI_F08_CALLBACKS.mod
+│                               │   ├── MPI_F08_COMPILE_CONSTANTS.mod
+│                               │   ├── MPI_F08_LINK_CONSTANTS.mod
+│                               │   ├── MPI_F08.mod
+│                               │   ├── MPI_F08_TYPES.mod
+│                               │   ├── mpif.h
+│                               │   ├── mpi.h
+│                               │   ├── MPI.mod
+│                               │   ├── mpiof.h
+│                               │   ├── mpio.h
+│                               │   ├── MPI_SIZEOFS.mod
+│                               │   └── PMPI_F08.mod
+│                               ├── lib
+│                               │   ├── libfmpich.so -> libmpifort_cray.so
+│                               │   ├── libmpi.a -> libmpi_cray.a
+│                               │   ├── libmpich.a -> libmpi_cray.a
+│                               │   ├── libmpichf90.a -> libmpifort_cray.a
+│                               │   ├── libmpichf90.so -> libmpifort_cray.so
+│                               │   ├── libmpich.so -> libmpi_cray.so
+│                               │   ├── libmpi_cray.a
+│                               │   ├── libmpi_cray.so -> libmpi_cray.so.12.0.0
+│                               │   ├── libmpi_cray.so.12 -> libmpi_cray.so.12.0.0
+│                               │   ├── libmpi_cray.so.12.0.0
+│                               │   ├── libmpifort.a -> libmpifort_cray.a
+│                               │   ├── libmpifort_cray.a
+│                               │   ├── libmpifort_cray.so -> libmpifort_cray.so.12.0.0
+│                               │   ├── libmpifort_cray.so.12 -> libmpifort_cray.so.12.0.0
+│                               │   ├── libmpifort_cray.so.12.0.0
+│                               │   ├── libmpifort.so -> libmpifort_cray.so
+│                               │   ├── libmpi.so -> libmpi_cray.so
+│                               │   ├── libmpl.so -> libmpi_cray.so
+│                               │   ├── libopa.so -> libmpi_cray.so
+│                               │   ├── libtvmpich.a
+│                               │   ├── libtvmpich.so -> libtvmpich.so.12.0.0
+│                               │   ├── libtvmpich.so.12 -> libtvmpich.so.12.0.0
+│                               │   ├── libtvmpich.so.12.0.0
+│                               │   └── pkgconfig
+│                               │       ├── mpichf90.pc
+│                               │       └── mpich.pc
+│                               └── lib-abi-mpich
+│                                   ├── libmpifort.so.12 -> ../lib/libmpifort_cray.so.12
+│                                   └── libmpi.so.12 -> ../lib/libmpi_cray.so.12
+└── usr
+    └── lib64
+        ├── libcxi.so -> libcxi.so.1.5.0
+        ├── libcxi.so.1 -> libcxi.so.1.5.0
+        └── libcxi.so.1.5.0
+
+31 directories, 240 files
