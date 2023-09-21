@@ -49,3 +49,15 @@ Therefore, these images are being built against that environment to ensure maxim
 However, given the proprietary nature of the environemnt the images do not store any files from the Cray environment. 
 Instead, the build logic makes the relevant files available through a webserver that serves them from `server-files` during the different build steps and remove them at the end.
 It is up to the user to make sure they have the right access and licensing in place to use these files and make them available under `server-files` for the builds.
+
+## Building the images.
+Images can be build by invoking the script `build-lumi-containers.sh`. For example:
+```
+./build-lumi-containers.sh all 8
+```
+will build all images running up to 8 parallel builds. Testing will always be sequencial on the images generated.
+One can also target a specific image such as:
+```
+./build-lumi-containers.sh pytorch 1
+```
+to build the Pytorch images.
