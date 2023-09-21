@@ -16,7 +16,7 @@ all: alphafold mpi4py pytorch tensorflow
 #
 alphafold: alphafold/build-rocm-5.5.3-python-3.9-alphafold-69afc4d.done
 
-mpi4py: mpi4py/build-rocm-5.5.3-python-3.10-mpi4py-3.1.4.done
+mpi4py: mpi4py/build-rocm-5.4.5-python-3.10-mpi4py-3.1.4.done
 
 pytorch: pytorch/build-rocm-5.5.1-python-3.10-pytorch-v2.0.1.done
 
