@@ -1,0 +1,168 @@
+#
+# Set the compiler for the builds to be GCC 10.
+#
+RUN set -eux ; \ 
+  update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 50  ; \
+  update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 50  ; \
+  true
+
+ENV CC gcc
+ENV CXX g++
+
+#
+# Install build dependencies
+#
+RUN set -eux; \
+  zypper -n refresh ; \
+  zypper --no-gpg-checks -n install -y --force-resolution \
+    xz binutils-gold bazel ; \
+  zypper clean
+
+#
+# Install aria2c to assist downloading datasets
+#
+ARG ARIA2_VERSION
+RUN set -eux ; \
+  mkdir -p /opt/builds/aria2 ; \
+  cd /opt/builds/aria2 ; \
+  curl -LO https://github.com/aria2/aria2/releases/download/release-$ARIA2_VERSION/aria2-$ARIA2_VERSION.tar.xz ; \
+  tar -xf aria2-$ARIA2_VERSION.tar.xz ; \
+  mkdir aria2-$ARIA2_VERSION/build ; \
+  cd aria2-$ARIA2_VERSION/build ; \
+  ../configure --prefix=/opt/aria2 ; \
+  make -j ; \
+  make -j install ; \
+  rm -rf /opt/builds
+  
+ENV PATH /opt/aria2/bin:$PATH
+
+#
+# Install hh-suite.
+#
+ARG HHSUITE_VERSION
+ENV HHSUITE_PATH /opt/hh-suite
+RUN set -eux ; \
+  mkdir -p /opt/builds ; \
+  git clone --branch v$HHSUITE_VERSION https://github.com/soedinglab/hh-suite.git /opt/builds/hh-suite ; \
+  mkdir /opt/builds/hh-suite/build ; \
+  cd /opt/builds/hh-suite/build ; \
+  cmake -DCMAKE_INSTALL_PREFIX=$HHSUITE_PATH .. ; \
+  make -j   ; \
+  make -j install  ; \
+  rm -rf /opt/builds
+
+#
+# Install conda environment
+# 
+ARG PYTHON_VERSION
+RUN $WITH_CONDA; set -eux ; \
+  conda create -n alphafold python=$PYTHON_VERSION ; \
+  conda activate alphafold ; \
+  conda install -y \
+    swig \
+    numpy \
+    Cython \
+    dm-tree \
+    biopython \
+    pandas ; \
+  conda install -y -c conda-forge \
+    pdbfixer==1.9 ; \
+  conda install -y -c bioconda \
+    kalign2 ; \
+  pip install \
+    tensorflow-rocm==2.11.1.550 \
+    ml-collections \
+    dm-haiku \
+    hmmer
+
+ENV WITH_CONDA "source /opt/miniconda3/bin/activate alphafold"
+
+#
+# Install JAX
+#
+ARG JAX_VERSION=0.4.13
+RUN $WITH_CONDA; set -eux ; \
+  git clone -b rocm-jaxlib-v$JAX_VERSION https://github.com/ROCmSoftwarePlatform/xla /opt/xla ; \
+  git clone -b rocm-jaxlib-v$JAX_VERSION https://github.com/ROCmSoftwarePlatform/jax /opt/jax ; \
+  \
+  cd /opt/jax ; \
+  export TEST_TMPDIR=/opt/.bazel ; \
+  python build/build.py --enable_rocm --rocm_path=$ROCM_PATH \
+    --rocm_amdgpu_targets=gfx908,gfx90a \
+    --bazel_options=--override_repository=xla=/opt/xla \
+    --bazel_options=--jobs=32 \
+    --bazel_startup_options=--host_jvm_args=-Xmx512m \
+    --bazel_startup_options=--host_jvm_args=-Xms256m ; \
+  mkdir -p /opt/wheels ; \
+  cp /opt/jax/dist/jaxlib-*.whl /opt/wheels ; \
+  rm -rf /opt/jax /opt/xla /opt/.bazel
+
+RUN $WITH_CONDA; set -eux ; \
+  pip install /opt/wheels/jaxlib-*.whl; \
+  pip install jax==$JAX_VERSION
+  
+ENV JAX_PLATFORMS "rocm,cpu"
+
+#
+# Install OpenMM
+#
+
+RUN set -eux; \
+  zypper -n refresh ; \
+  zypper --no-gpg-checks -n install -y --force-resolution \
+    doxygen ; \
+  zypper clean
+  
+ARG OPENMM_VERSION
+ARG OPENMM_HIP_VERSION
+ENV OPENMM_PATH /opt/openmm
+RUN $WITH_CONDA; set -eux ; \
+  mkdir -p /opt/builds/build /opt/builds/build-hip; \
+  cd /opt/builds ; \
+  \
+  git clone https://github.com/openmm/openmm.git -b $OPENMM_VERSION /opt/builds/openmm ; \
+  cd /opt/builds/build ; \
+  cmake /opt/builds/openmm -DCMAKE_C_COMPILER=$ROCM_PATH/llvm/bin/clang \
+                           -DCMAKE_CXX_COMPILER=$ROCM_PATH/llvm/bin/clang++ \
+                           -DCMAKE_INSTALL_PREFIX=$OPENMM_PATH \
+                           -DOPENMM_BUILD_COMMON=ON \
+                           -DOPENMM_PYTHON_USER_INSTALL=OFF \
+                           -DPYTHON_EXECUTABLE=$(which python) \
+                           -DCMAKE_BUILD_TYPE=Release ; \
+  make -j ; \
+  make -j install ; \
+  make -j PythonInstall ; \
+  \ 
+  git clone https://github.com/amd/openmm-hip.git /opt/builds/openmm-hip ; \
+  cd /opt/builds/openmm-hip ; \
+  git checkout -b mydev $OPENMM_HIP_VERSION ; \
+  cd /opt/builds/build-hip ; \
+  cmake /opt/builds/openmm-hip -DCMAKE_C_COMPILER=$ROCM_PATH/llvm/bin/clang \
+                                      -DCMAKE_CXX_COMPILER=$ROCM_PATH/llvm/bin/clang++ \
+                                      -DOPENMM_DIR=$OPENMM_PATH \
+                                      -DOPENMM_SOURCE_DIR=/opt/builds/openmm \
+                                      -DCMAKE_INSTALL_PREFIX=$OPENMM_PATH \
+                                      -DCMAKE_BUILD_TYPE=Release ; \
+  make -j ; \
+  make -j install ; \
+  rm -rf /opt/builds ; \
+  true
+  
+#
+# Clone alphafold 
+#
+ARG ALPHAFOLD_VERSION
+ENV ALPHAFOLD_PATH /opt/alphafold
+RUN set -eux ; \
+  git clone https://github.com/deepmind/alphafold $ALPHAFOLD_PATH ; \
+  \
+  cd $ALPHAFOLD_PATH ; \
+  git checkout -b mydev $ALPHAFOLD_VERSION ; \
+  sed -i 's#CUDA#HIP#g' alphafold/relax/amber_minimize.py ; \
+  \
+  cd $ALPHAFOLD_PATH/alphafold/common ; \
+  curl -LO https://git.scicore.unibas.ch/schwede/openstructure/-/raw/7102c63615b64735c4941278d92b554ec94415f8/modules/mol/alg/src/stereo_chemical_props.txt
+
+RUN $WITH_CONDA ; set -eux ; \
+  rm $CONDA_PREFIX/lib/libstdc++.so* ; \
+  ln -s /usr/lib64/libstdc++.so* $CONDA_PREFIX/lib

@@ -1,0 +1,59 @@
+
+ENV ROCM_RPM https://repo.radeon.com/amdgpu-install/5.5.1/sle/15.3/amdgpu-install-5.5.50501-1.noarch.rpm 
+ENV ROCM_RELEASE 5.5.1
+
+RUN set -eux ; \
+  zypper --no-gpg-checks -n install $ROCM_RPM
+
+RUN set -eux ; \
+  sed -i 's#gpgcheck=1#gpgcheck=0#g' /etc/zypp/repos.d/*.repo
+
+RUN set -eux ; \
+ amdgpu-install -y --no-dkms --usecase=rocm --rocmrelease=$ROCM_RELEASE
+
+#
+# ROCm environment
+#
+ENV ROCM_PATH /opt/rocm-$ROCM_RELEASE
+ENV PATH $ROCM_PATH/bin:$ROCM_PATH/llvm/bin:$PATH
+ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:$ROCM_PATH/lib
+
+#
+# Mark RCCL as non-debug - this can me overriden by RCCL debug build. 
+#
+ENV RCCL_DEBUG 0
+
+#
+# Fix rocm-smi lib
+#
+RUN set -eux ; \
+  cd /opt ; \
+  curl -LO http://localhost:$SERVER_PORT/rocm-5.5.1-rocm-smi-lib.patch ; \
+  git clone -b rocm-$ROCM_RELEASE https://github.com/RadeonOpenCompute/rocm_smi_lib /opt/mybuild ; \
+  mkdir -p /opt/mybuild/build ; \
+  \
+  cd /opt/mybuild ; \
+  git apply < /opt/rocm-5.5.1-rocm-smi-lib.patch ; \
+  rm -rf /opt/rocm-5.5.1-rocm-smi-lib.patch ; \
+  \  
+  cd /opt/mybuild/build ; \
+  cmake -DCMAKE_INSTALL_PREFIX=/opt/rocm-patched .. ; \
+  make -j32 ; \
+  make -j32 install ; \
+  cd / ; rm -rf /opt/mybuild
+
+RUN set -eux ; \
+  for i in liboam librocm_smi64 ; do \
+    src=$(find /opt/rocm-$ROCM_RELEASE -type f -iname $i.so*) ; \
+    dst=$(find /opt/rocm-patched -type f -iname $i.so*) ; \
+    rm -rf $src ; \
+    ln -s $dst $src ; \
+  done
+
+RUN set -eux ; \
+  cd $ROCM_PATH/bin ; \
+  for i in rocm_agent_enumerator rocminfo ; do \
+    rm -rf $i ; \
+    curl -LO http://localhost:$SERVER_PORT/$i ; \
+    chmod +x $i ; \
+  done

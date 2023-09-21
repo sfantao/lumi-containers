@@ -1,0 +1,31 @@
+ENV OSU_VERSION 7.2
+ENV OSU_PATH /opt/osu
+
+#
+# We can't run MPI during configure phase as we don't really have MPI available at build time.
+# Therefore we trick configure to believe MPI exists and we just link during the build phase.
+#
+RUN set -eux ; \
+  cd / ; \
+  curl -LO $CPE_URL ; \
+  tar -xf *.tar ; rm -rf *.tar ; \
+  \
+  mkdir /opt/builds ; \
+  cd /opt/builds ; \
+  curl -LO  https://mvapich.cse.ohio-state.edu/download/mvapich/osu-micro-benchmarks-$OSU_VERSION.tar.gz ; \
+  tar -xf osu-*.tar.gz ; \
+  rm -rf osu-*.tar.gz ; \
+  \
+  cd /opt/builds/osu-*/ ; \
+  \
+  sed -i 's/$ac_cv_func_MPI_Init/yes/g' configure ; \
+  sed -i 's/$ac_cv_func_MPI_Accumulate/yes/g' configure ; \
+  sed -i 's/$ac_cv_func_MPI_Get_accumulate/yes/g' configure ; \
+  \
+  CC=$ROCM_PATH/llvm/bin/clang CXX=$ROCM_PATH/llvm/bin/clang++ \
+    CFLAGS="-I$MPICH_PATH/include" \
+    ./configure --enable-rocm --with-rocm=$ROCM_PATH --prefix=$OSU_PATH ; \
+  make LDFLAGS="-L$MPICH_PATH/../../../gtl/lib -Wl,-rpath=$MPICH_PATH/../../../gtl/lib -L$MPICH_PATH/lib -lmpi_cray -lmpi_gtl_hsa -L$ROCM_PATH/lib  -lamdhip64" -j install ; \
+  \
+  cd / ; rm -rf /opt/builds ; \
+  $REMOVE_CRAY_DEPS

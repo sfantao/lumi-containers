@@ -1,0 +1,18 @@
+ENV RCCL_DEBUG 1
+
+RUN set -eux ; \
+  git clone -b rocm-5.5.1 https://github.com/ROCmSoftwarePlatform/rccl /opt/mybuild ; \
+  mkdir /opt/mybuild/build ; \
+  cd  /opt/mybuild/build ; \
+  CXX=$ROCM_PATH/bin/hipcc \
+  cmake \
+    -DCMAKE_INSTALL_PREFIX=/opt/rccl-debug \
+    -DAMDGPU_TARGETS="gfx90a:xnack-;gfx90a:xnack+" \
+    -DCMAKE_BUILD_TYPE=Debug \
+    .. ; \
+  nice make -j V=1 VERBOSE=1 ; \
+  nice make -j install ; \
+  cd / ; rm -rf /opt/mybuild
+  
+# Prioritize debug lib
+ENV LD_LIBRARY_PATH /opt/rccl-debug/lib:$LD_LIBRARY_PATH

@@ -1,0 +1,9 @@
+#
+# Install miniconda
+#
+RUN set -eux ; \
+  curl -LO https://repo.anaconda.com/miniconda/Miniconda3-py310_23.3.1-0-Linux-x86_64.sh ; \
+  bash ./Miniconda3-* -b -p /opt/miniconda3 -s ; \
+  rm -rf ./Miniconda3-*
+
+ENV WITH_CONDA "source /opt/miniconda3/bin/activate base"

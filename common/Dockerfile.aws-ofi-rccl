@@ -1,0 +1,27 @@
+RUN set -eux ; \
+  cd / ; \
+  curl -LO $CPE_URL ; \
+  tar -xf *.tar ; rm -rf *.tar ; \
+  \
+  git clone -b cxi https://github.com/ROCmSoftwarePlatform/aws-ofi-rccl /opt/mybuild ; \
+  cd /opt/mybuild ; \
+  ./autogen.sh ; \
+  \
+  cd /opt/mybuild ; \
+  export CPATH=$LIBFABRIC_PATH/include ; \
+  export LIBRARY_PATH=$LD_LIBRARY_PATH ; \
+  LDFLAGS='-lcxi' CC=gcc-10 ./configure --with-libfabric=$LIBFABRIC_PATH --enable-trace --with-hip=$ROCM_PATH --with-rccl=$ROCM_PATH/rccl --disable-tests ; \
+  LDFLAGS='-lcxi' CC=gcc-10 nice make -j ; \
+  \
+  mkdir /opt/aws-ofi-rccl ; \
+  mv src/.libs/librccl-net.so* /opt/aws-ofi-rccl ; \
+  rm -rf /opt/mybuild ; \
+  $REMOVE_CRAY_DEPS
+  
+#
+# Add relevant libs to execution environment
+#
+ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:/opt/aws-ofi-rccl
+ENV CXI_FORK_SAFE=1
+ENV CXI_FORK_SAFE_HP=1
+ENV FI_CXI_DISABLE_CQ_HUGETLB=1

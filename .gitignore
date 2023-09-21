@@ -1,0 +1,4 @@
+/test.sbatch
+/test.tar
+/*/*.done
+/*/*.log
