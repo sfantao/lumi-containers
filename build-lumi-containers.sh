@@ -59,7 +59,7 @@ echo " ------------------------------------ "
 #
 # Upstream and test images.
 #
-LUMI_TEST_FOLDER="/pfs/lustrep2/scratch/project_462000125/samantao/containers-test"
+LUMI_TEST_FOLDER="/pfs/lustrep2/projappl/project_462000125/samantao-public/containers"
 Nodes=4
 echo "test.sbatch" > .all-test-files
 cat > test.sbatch << EOF
@@ -70,7 +70,7 @@ cat > test.sbatch << EOF
 #SBATCH --exclusive 
 #SBATCH -N $Nodes 
 #SBATCH --gpus $((Nodes*8)) 
-#SBATCH -t 0:30:00 
+#SBATCH -t 2:00:00 
 #SBATCH --mem 0
 #SBATCH -o test.out
 #SBATCH -e test.err
@@ -90,7 +90,6 @@ MYMASKS1="0x\${c}000000000000,0x\${c}00000000000000,0x\${c}0000,0x\${c}000000,0x
 MYMASKS2="0x\${c}00000000000000\${c}000000000000,0x\${c}00000000000000\${c}00000000000000,0x\${c}00000000000000\${c}0000,0x\${c}00000000000000\${c}000000,0x\${c}00000000000000\${c},0x\${c}00000000000000\${c}00,0x\${c}00000000000000\${c}00000000,0x\${c}00000000000000\${c}0000000000"
 
 export SCMD="srun \
-  --jobid 4577206 \
   -N $Nodes \
   -n $((Nodes*8)) \
   --cpu-bind=mask_cpu:\$MYMASKS1 \
@@ -110,28 +109,35 @@ fi
 docker login
 for i in $files ; do
   while read -r line; do 
-    # project filename test_filename local_tag remote_tag sif_file_part1 sif_file_part2
     project=$(dirname $i)
     filename=$(basename $i)
     test_filename=${filename%.done}.test
+    local_tag=$line
+
+    #
+    # Remote names
+    #
+    hash=$(docker images $local_tag | head -n2 | tail -n1 | awk '{print $3;}')
+    rf1="$LUMI_TEST_FOLDER/$(echo $local_tag | sed 's/:/-/g' )-dockerhash-"
+    rf2="$hash"
+    tarf="${rf1}${rf2}.tar"
+    sif="${rf1}${rf2}.sif"
 
     #
     # Push images
     #
-    local_tag=$line
-    remote_tag=sfantao/$line
-    docker tag $local_tag $remote_tag
-    docker push $remote_tag
+    # remote_tag=sfantao/$line
+    # docker tag $local_tag $remote_tag
+    # docker push $remote_tag
     
+    if ssh lumi "[[ ! -f ${tarf} ]]" ; then
+      docker save $local_tag | xz -z -T32 -c | ssh lumi "bash -c 'rm -rf ${rf1}*.tar ; xz -d -c > ${tarf}'"
+    fi
+
     #
     # Build singularity images remotely if they do not exist.
     #
-    hash=$(docker images $local_tag | head -n2 | tail -n1 | awk '{print $3;}')
-    sif1="$LUMI_TEST_FOLDER/$(echo $local_tag | sed 's/:/-/g' )-dockerhash-"
-    sif2="$hash.sif"
-    sif="${sif1}${sif2}"
-
-    ssh lumi "bash -c 'set -ex ; if [ -f ${sif} ] ; then echo "${sif1} already exists!" ; else rm -rf ${sif1}* ; singularity build ${sif} docker://$remote_tag ; fi'"
+    ssh lumi "bash -c 'set -ex ; if [ -f ${sif} ] ; then echo "${sif} already exists!" ; else rm -rf ${rf1}*.sif ; singularity build ${sif} docker-archive://${tarf} ; chmod o+rx ${sif} ${tarf} ; fi'"
 
     #
     # Add entry to test script.
@@ -170,4 +176,4 @@ done
 rm -rf test.tar 
 tar -cf test.tar $(cat .all-test-files)
 scp test.tar lumi:$LUMI_TEST_FOLDER
-ssh lumi "bash -c 'set -ex ; cd $LUMI_TEST_FOLDER; rm -rf runtests ; mkdir runtests ; cd runtests; tar -xf ../test.tar ; bash test.sbatch'"
+ssh lumi "bash -c 'set -ex ; cd $LUMI_TEST_FOLDER; rm -rf runtests ; mkdir runtests ; cd runtests; tar -xf ../test.tar ; sbatch < test.sbatch'"
