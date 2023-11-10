@@ -1,3 +1,18 @@
+diff --git a/rocm_smi/CMakeLists.txt b/rocm_smi/CMakeLists.txt
+index 8401dbe..abe5965 100755
+--- a/rocm_smi/CMakeLists.txt
++++ b/rocm_smi/CMakeLists.txt
+@@ -41,6 +41,10 @@ message("Package version: ${PKG_VERSION_STR}")
+ # Set a default value for the package version
+ get_version_from_tag("1.0.0.0" ${SO_VERSION_GIT_TAG_PREFIX} GIT)
+ 
++set ( VERSION_MAJOR "5")
++set ( VERSION_MINOR "0")
++set ( ROCM_PATCH_VERSION "50501")
++
+ # VERSION_* variables should be set by get_version_from_tag
+ if ( ${ROCM_PATCH_VERSION} )
+     set ( VERSION_PATCH ${ROCM_PATCH_VERSION})
 diff --git a/third_party/shared_mutex/shared_mutex.cc b/third_party/shared_mutex/shared_mutex.cc
 index ae211a8..b1b8dad 100755
 --- a/third_party/shared_mutex/shared_mutex.cc

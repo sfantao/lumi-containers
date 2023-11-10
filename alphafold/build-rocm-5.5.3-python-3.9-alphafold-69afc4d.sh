@@ -14,9 +14,10 @@ cat \
   ../common/Dockerfile.rocm-5.5.3  \
   ../common/Dockerfile.miniconda \
   $DOCKERFILE \
-  > .Dockerfile
+  > $DOCKERFILE_TMP
 
 $DOCKERBUILD \
+  -f $DOCKERFILE_TMP \
   --build-arg SERVER_PORT=$SERVER_PORT \
   --build-arg PYTHON_VERSION=$PYTHON_VERSION \
   --build-arg JAX_VERSION=$JAX_VERSION \

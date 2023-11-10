@@ -2,11 +2,11 @@
 set -o pipefail
 
 PYTHON_VERSION='3.10'
-PYTORCH_VERSION='2.0.1'
+PYTORCH_VERSION='2.1.0'
 
 cat \
   ../common/Dockerfile.header \
-  ../common/Dockerfile.rocm-5.5.1  \
+  ../common/Dockerfile.rocm-5.6.1  \
   ../common/Dockerfile.miniconda \
   ../common/Dockerfile.aws-ofi-rccl \
   ../common/Dockerfile.rccltest \

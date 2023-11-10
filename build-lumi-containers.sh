@@ -18,7 +18,6 @@ fi
 export SERVER_PORT=57698
 
 export DOCKERBUILD="docker build \
-                      -f .Dockerfile \
                       --ulimit nofile=32000:32000 \
                       --network=host \
                       --build-arg SERVER_PORT=$SERVER_PORT "
@@ -59,7 +58,7 @@ echo " ------------------------------------ "
 #
 # Upstream and test images.
 #
-LUMI_TEST_FOLDER="/pfs/lustrep2/projappl/project_462000125/samantao-public/containers"
+LUMI_TEST_FOLDER="/pfs/lustrep3/scratch/project_462000394/containers/staging-area"
 Nodes=4
 echo "test.sbatch" > .all-test-files
 cat > test.sbatch << EOF
@@ -95,9 +94,10 @@ export SCMD="srun \
   --cpu-bind=mask_cpu:\$MYMASKS1 \
   --gpus $((Nodes*8)) \
   singularity exec \
-    -B /var/spool/slurmd:/var/spool/slurmd \
-    -B /opt/cray:/opt/cray \
-    -B /usr/lib64/libcxi.so.1:/usr/lib64/libcxi.so.1"
+    -B /var/spool/slurmd \
+    -B /opt/cray \
+    -B /usr/lib64/libcxi.so.1 \
+    -B /usr/lib64/libjansson.so.4"
 EOF
 
 if [[ "$target" == "all" ]] ; then
@@ -106,7 +106,7 @@ else
   files=$(ls -1 $target/*.done)
 fi
 
-docker login
+#docker login
 for i in $files ; do
   while read -r line; do 
     project=$(dirname $i)
@@ -117,6 +117,12 @@ for i in $files ; do
     #
     # Remote names
     #
+
+    if [ $(docker images $local_tag | wc -l) -ne 2 ] ; then
+      echo "Tag $local_tag can't be found."
+      false
+    fi
+
     hash=$(docker images $local_tag | head -n2 | tail -n1 | awk '{print $3;}')
     rf1="$LUMI_TEST_FOLDER/$(echo $local_tag | sed 's/:/-/g' )-dockerhash-"
     rf2="$hash"

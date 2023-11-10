@@ -40,14 +40,15 @@ RUN set -eux ; \
   cmake -DCMAKE_INSTALL_PREFIX=/opt/rocm-patched .. ; \
   make -j32 ; \
   make -j32 install ; \
-  cd / ; rm -rf /opt/mybuild
+  cd / ; rm -rf /opt/mybuild ; \
+  true ; true ; true
 
 RUN set -eux ; \
   for i in liboam librocm_smi64 ; do \
     src=$(find /opt/rocm-$ROCM_RELEASE -type f -iname $i.so*) ; \
     dst=$(find /opt/rocm-patched -type f -iname $i.so*) ; \
     rm -rf $src ; \
-    ln -s $dst $src ; \
+    cp $dst $src ; \
   done
 
 RUN set -eux ; \

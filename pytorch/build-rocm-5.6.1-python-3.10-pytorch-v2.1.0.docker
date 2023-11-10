@@ -1,0 +1,119 @@
+#
+# Install conda environment
+# 
+ARG PYTHON_VERSION
+RUN $WITH_CONDA; set -eux ; \
+  conda create -n pytorch python=$PYTHON_VERSION ; \
+  conda activate pytorch ; \
+  conda install -y ninja pillow cmake pyyaml
+ENV WITH_CONDA "source /opt/miniconda3/bin/activate pytorch"
+
+#
+# Install pytorch
+# 
+
+# Repository for the wheel files
+RUN set -eux ; \
+  mkdir /opt/wheels
+  
+ENV PYTORCH_ROCM_ARCH gfx90a 
+ARG PYTORCH_VERSION
+ARG PYTORCH_DEBUG
+ARG PYTORCH_RELWITHDEBINFO
+RUN $WITH_CONDA; set -eux ; \
+  if [[ "$PYTORCH_VERSION" != "2.1.0" ]] ; then \
+    echo "Assuming Pytorch version 2.1.0" ; \
+    false ; \
+  fi ; \
+  cd /opt/wheels ; \
+  ROCM_VERSION_MAJOR=$(echo $ROCM_RELEASE | cut -d'.' -f1) ; \
+  ROCM_VERSION_MINOR=$(echo $ROCM_RELEASE | cut -d'.' -f2) ; \
+  PYTHON_VERSION_MAJOR=$(echo $PYTHON_VERSION | cut -d'.' -f1) ; \
+  PYTHON_VERSION_MINOR=$(echo $PYTHON_VERSION | cut -d'.' -f2) ; \
+  curl -LO https://download.pytorch.org/whl/rocm${ROCM_VERSION_MAJOR}.${ROCM_VERSION_MINOR}/torch-${PYTORCH_VERSION}%2Brocm${ROCM_VERSION_MAJOR}.${ROCM_VERSION_MINOR}-cp${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR}-cp${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR}-linux_x86_64.whl
+
+RUN $WITH_CONDA; set -eux ; \
+  pip install /opt/wheels/torch*.whl
+  
+#
+# Pytorch dependencies
+#
+
+# ubuntu|pytorch|apex|torch_2.1_higher|67e794cc2f0552023b7e53b0c6eff76d94df7301|https://github.com/ROCmSoftwarePlatform/apex
+# ubuntu|pytorch|torchvision|release/0.16|a90e584667fc3a7d85485764245e0db92387aca1|https://github.com/pytorch/vision
+# ubuntu|pytorch|torchtext|release/0.15|4571036cf66c539e50625218aeb99a288d79f3e1|https://github.com/pytorch/text
+# ubuntu|pytorch|torchdata|release/0.6|e1feeb2542293e42f083d24301386db6c003eeee|https://github.com/pytorch/data
+# ubuntu|pytorch|torchaudio|release/2.1|420d9ac38ffb68ee442ea08514aa8905956a99eb|https://github.com/pytorch/audio
+ 
+RUN $WITH_CONDA; set -eux ; \
+  rm -rf $CONDA_PREFIX/lib/libstdc++.so* ; \
+  \  
+  git clone --recursive https://github.com/ROCmSoftwarePlatform/apex /opt/mybuild ; \
+  cd /opt/mybuild ; \
+  git checkout -b mydev 67e794cc2f0552023b7e53b0c6eff76d94df7301 ; \
+  git submodule sync ; \
+  git submodule update --init --recursive --jobs 0 ; \
+  sed -i "s#/opt/rocm-5.0.0#$ROCM_PATH#g" setup.py ; \
+  CC=gcc-10, CXX=g++-10 nice python setup.py bdist_wheel --cpp_ext --cuda_ext ; \
+  cp -rf dist/* /opt/wheels ; \
+  rm -rf /opt/mybuild 
+
+RUN $WITH_CONDA; set -eux ; \
+  \  
+  git clone https://github.com/pytorch/vision /opt/mybuild ; \
+  cd /opt/mybuild ; \
+  git checkout -b mydev a90e584667fc3a7d85485764245e0db92387aca1 ; \
+  git submodule sync ; \
+  git submodule update --init --recursive --jobs 0 ; \
+  CC=gcc-10 CXX=g++-10 FORCE_CUDA=1 nice python3 setup.py bdist_wheel ; \
+  cp -rf dist/* /opt/wheels ; \
+  rm -rf /opt/mybuild 
+  
+RUN $WITH_CONDA; set -eux ; \
+  \  
+  git clone https://github.com/pytorch/data /opt/mybuild ; \
+  cd /opt/mybuild ; \
+  git checkout -b mydev e1feeb2542293e42f083d24301386db6c003eeee ; \
+  git submodule sync ; \
+  git submodule update --init --recursive --jobs 0 ; \
+  CC=gcc-10 CXX=g++-10 FORCE_CUDA=1 nice python3 setup.py bdist_wheel ; \
+  cp -rf dist/* /opt/wheels ; \
+  rm -rf /opt/mybuild 
+  
+RUN $WITH_CONDA; set -eux ; \
+  \  
+  git clone https://github.com/pytorch/text /opt/mybuild ; \
+  cd /opt/mybuild ; \
+  git checkout -b mydev 4571036cf66c539e50625218aeb99a288d79f3e1 ; \
+  git submodule sync ; \
+  git submodule update --init --recursive --jobs 0 ; \
+  CC=gcc-10 CXX=g++-10 FORCE_CUDA=1 nice python3 setup.py bdist_wheel ; \
+  cp -rf dist/* /opt/wheels ; \
+  rm -rf /opt/mybuild 
+ 
+RUN $WITH_CONDA; set -eux ; \
+  \
+  git clone https://github.com/pytorch/audio /opt/mybuild ; \
+  cd /opt/mybuild ; \
+  git checkout -b mydev 420d9ac38ffb68ee442ea08514aa8905956a99eb ; \
+  git submodule sync ; \
+  git submodule update --init --recursive --jobs 0 ; \
+  ln -s $ROCM_PATH/.info/version $ROCM_PATH/.info/version-dev ; \
+  mkdir /opt/mytools ; \
+  ln -s /usr/bin/gcc-10 /opt/mytools/gcc ; \
+  ln -s /usr/bin/g++-10 /opt/mytools/g++ ; \
+  PATH=$PATH:/opt/mytools CC=gcc-10 CXX=g++-10 FORCE_CUDA=1 nice python3 setup.py bdist_wheel ; \
+  cp -rf dist/* /opt/wheels ; \
+  rm -rf /opt/mybuild /opt/mytools
+  
+RUN $WITH_CONDA; set -eux ; \
+  pip install /opt/wheels/apex-*.whl
+RUN $WITH_CONDA; set -eux ; \
+  pip install /opt/wheels/torchvision-*.whl
+RUN $WITH_CONDA; set -eux ; \
+  pip install /opt/wheels/torchdata-*.whl
+RUN $WITH_CONDA; set -eux ; \
+  pip install /opt/wheels/torchtext-*.whl
+RUN $WITH_CONDA; set -eux ; \
+  pip install /opt/wheels/torchaudio-*.whl
+  

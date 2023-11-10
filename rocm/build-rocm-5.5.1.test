@@ -1,0 +1,32 @@
+#!/bin/bash -ex
+set -o pipefail
+
+rm -rf run.sh 
+cat > run.sh << EOF
+#!/bin/bash -e
+  set -x
+
+  # Single rank test.
+  if [ \$SLURM_PROCID -ne 0 ] ; then
+    exit 0
+  fi
+
+  cd /myrun/HIP-Examples/gpu-burn
+  make -j
+  /myrun/HIP-Examples/gpu-burn/build/gpuburn-hip
+  
+EOF
+chmod +x run.sh 
+
+rm -rf HIP-Examples
+git clone https://github.com/ROCm-Developer-Tools/HIP-Examples
+# Fix ROCm driver/user-space incompatibility (hipMemGetInfo).
+# ~ 100 % of the free memory usually
+# sed -i 's/return freeMem/return 68625104896/g' HIP-Examples/gpu-burn/BurnKernel.cpp
+# ~ 90 % of the free memory usually
+sed -i 's/return freeMem/return 61762594406/g' HIP-Examples/gpu-burn/BurnKernel.cpp
+
+$SCMD \
+    -B $(pwd):/myrun \
+    $1 \
+    /myrun/run.sh |& tee res.log

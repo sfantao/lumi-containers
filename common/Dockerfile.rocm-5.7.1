@@ -1,6 +1,6 @@
 
-ENV ROCM_RPM https://repo.radeon.com/amdgpu-install/5.4.5/sle/15.3/amdgpu-install-5.4.50405-1.noarch.rpm
-ENV ROCM_RELEASE 5.4.5
+ENV ROCM_RPM https://repo.radeon.com/amdgpu-install/5.7.1/sle/15.4/amdgpu-install-5.7.50701-1.noarch.rpm
+ENV ROCM_RELEASE 5.7.1
 
 RUN set -eux ; \
   zypper --no-gpg-checks -n install $ROCM_RPM
@@ -8,8 +8,17 @@ RUN set -eux ; \
 RUN set -eux ; \
   sed -i 's#gpgcheck=1#gpgcheck=0#g' /etc/zypp/repos.d/*.repo
 
+
+RUN set -eux; \
+  zypper -n refresh ; \
+  zypper --no-gpg-checks -n install -y --force \
+    libxml2-2-2.9.12 \
+    libsystemd0-249.11 \
+    libudev1-249.11 ; \
+  zypper clean
+
 RUN set -eux ; \
-  amdgpu-install -y --no-dkms --usecase=hiplibsdk,rocm --rocmrelease=$ROCM_RELEASE
+  amdgpu-install -y --no-dkms --usecase=rocm --rocmrelease=$ROCM_RELEASE
 
 #
 # ROCm environment
@@ -30,10 +39,3 @@ RUN set -eux ; \
     curl -LO http://localhost:$SERVER_PORT/$i ; \
     chmod +x $i ; \
   done
-
-#
-# Put libstdc++ in front of the LD_LIBRARY_PATH
-#
-RUN set -eux ; \
-  cd $ROCM_PATH/lib ; \
-  ln -s /usr/lib64/libstdc++.so* .

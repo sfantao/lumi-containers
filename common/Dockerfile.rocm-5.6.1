@@ -1,6 +1,6 @@
 
-ENV ROCM_RPM https://repo.radeon.com/amdgpu-install/5.4.5/sle/15.3/amdgpu-install-5.4.50405-1.noarch.rpm
-ENV ROCM_RELEASE 5.4.5
+ENV ROCM_RPM https://repo.radeon.com/amdgpu-install/5.6.1/sle/15.4/amdgpu-install-5.6.50601-1.noarch.rpm
+ENV ROCM_RELEASE 5.6.1
 
 RUN set -eux ; \
   zypper --no-gpg-checks -n install $ROCM_RPM
@@ -8,8 +8,9 @@ RUN set -eux ; \
 RUN set -eux ; \
   sed -i 's#gpgcheck=1#gpgcheck=0#g' /etc/zypp/repos.d/*.repo
 
+# This version install returns an 106 error while postprocessing kernel modules.
 RUN set -eux ; \
-  amdgpu-install -y --no-dkms --usecase=hiplibsdk,rocm --rocmrelease=$ROCM_RELEASE
+ amdgpu-install -y --no-dkms --usecase=rocm --rocmrelease=$ROCM_RELEASE || true
 
 #
 # ROCm environment
@@ -30,10 +31,3 @@ RUN set -eux ; \
     curl -LO http://localhost:$SERVER_PORT/$i ; \
     chmod +x $i ; \
   done
-
-#
-# Put libstdc++ in front of the LD_LIBRARY_PATH
-#
-RUN set -eux ; \
-  cd $ROCM_PATH/lib ; \
-  ln -s /usr/lib64/libstdc++.so* .

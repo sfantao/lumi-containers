@@ -2,3 +2,4 @@
 /test.tar
 /*/*.done
 /*/*.log
+/*/.tmp-*

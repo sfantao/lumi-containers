@@ -1,0 +1,28 @@
+#!/bin/bash -ex
+set -o pipefail
+
+rm -rf run.sh 
+cat > run.sh << EOF
+#!/bin/bash -e
+  set -x
+
+  # Single rank test.
+  if [ \$SLURM_PROCID -ne 0 ] ; then
+    exit 0
+  fi
+
+  cd /myrun/HIP-Examples/gpu-burn
+  make clean 
+  make -j
+  /myrun/HIP-Examples/gpu-burn/build/gpuburn-hip
+  
+EOF
+chmod +x run.sh 
+
+rm -rf HIP-Examples
+git clone https://github.com/ROCm-Developer-Tools/HIP-Examples
+
+$SCMD \
+    -B $(pwd):/myrun \
+    $1 \
+    /myrun/run.sh |& tee res.log

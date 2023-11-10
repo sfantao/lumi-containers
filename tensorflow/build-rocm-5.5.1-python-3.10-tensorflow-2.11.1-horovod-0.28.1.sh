@@ -13,9 +13,10 @@ cat \
   ../common/Dockerfile.aws-ofi-rccl \
   ../common/Dockerfile.rccltest \
   $DOCKERFILE \
-  > .Dockerfile
+  > $DOCKERFILE_TMP
 
 $DOCKERBUILD \
+  -f $DOCKERFILE_TMP \
   --build-arg SERVER_PORT=$SERVER_PORT \
   --build-arg PYTHON_VERSION=$PYTHON_VERSION \
   --build-arg TENSORFLOW_VERSION=$TENSORFLOW_VERSION \
@@ -24,6 +25,7 @@ $DOCKERBUILD \
   --progress=plain -t $TAG . 2>&1 | tee $LOG
 
 $DOCKERBUILD \
+  -f $DOCKERFILE_TMP \
   --build-arg SERVER_PORT=$SERVER_PORT \
   --build-arg PYTHON_VERSION=$PYTHON_VERSION \
   --build-arg TENSORFLOW_VERSION=$TENSORFLOW_VERSION \
