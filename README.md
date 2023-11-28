@@ -33,9 +33,10 @@ srun \
   --cpu-bind=mask_cpu:\$MYMASKS \
   --gpus $((Nodes*8)) \
   singularity exec \
-    -B /var/spool/slurmd:/var/spool/slurmd \
-    -B /opt/cray:/opt/cray \
-    -B /usr/lib64/libcxi.so.1:/usr/lib64/libcxi.so.1
+    -B /var/spool/slurmd \
+    -B /opt/cray \
+    -B /usr/lib64/libcxi.so.1 \
+    -B /usr/lib64/libjansson.so.4 \
     -B $(pwd):/myrun \
     image.sif \
     /myrun/run.sh
