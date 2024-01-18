@@ -8,7 +8,7 @@ common_files := $(shell find $$(pwd)/common -name Dockerfile.*)
 #
 .PHONY: all alphafold pytorch mpi4py tensorflow
 
-all: alphafold mpi4py pytorch tensorflow rocm
+all: alphafold mpi4py pytorch tensorflow rocm jax
   echo "Built all"
 
 #
@@ -32,6 +32,8 @@ rocm_deps += rocm/build-rocm-5.5.3.done
 rocm_deps += rocm/build-rocm-5.6.1.done
 rocm_deps += rocm/build-rocm-5.7.1.done
 rocm: $(rocm_deps)
+
+jax: jax/build-rocm-5.6.1-python-3.10-jax-0.4.13.done
 
 #
 # Generic recipe 

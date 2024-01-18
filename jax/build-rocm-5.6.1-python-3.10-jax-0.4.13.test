@@ -1,0 +1,39 @@
+#!/bin/bash -ex
+set -o pipefail
+
+#
+# Run RCCL tests
+#
+
+rm -rf run.sh 
+cat > run.sh << EOF
+#!/bin/bash -e
+cd /myrun
+\$WITH_CONDA
+set -x
+
+export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
+
+# -b minbytes
+# -e maxbytes
+# -f increment factor
+# -g gpus per thread
+/opt/rccltests/all_reduce_perf -z 1 -b 2M -e 2048M -f 2 -g 1 -t 1 -R 1 -n 80 -w 5 -d half
+
+# python -c "print('hello')"
+EOF
+chmod +x run.sh 
+
+$SCMD \
+    -B $(pwd):/myrun \
+    $1 \
+    /myrun/run.sh |& tee res.log
+
+# Check BW for large transfers which are more stable
+for i in $(grep -r 'half     sum' res.log | tail -n5 | awk '{print $7}') ; do
+  echo "Measure RCCL test all-reduce BW to be $i..."
+  if (( $(echo "$i < 29.00" |bc -l) )); then
+    echo "Too low!!!";
+    exit 1
+  fi
+done

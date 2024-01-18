@@ -12,6 +12,8 @@ cd /myrun
 \$WITH_CONDA
 set -x
 
+export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
+
 # -b minbytes
 # -e maxbytes
 # -f increment factor
@@ -223,5 +225,32 @@ chmod +x run.sh
 $SCMD \
     -B $(pwd):/myrun \
     -B /pfs/lustrep2/scratch/project_462000125/samantao/data-sets/mnist:/datasets \
+    $1 \
+    /myrun/run.sh |& tee res.log
+
+#
+# Test deepspeed
+#
+
+rm -rf run.sh 
+cat > run.sh << EOF
+#!/bin/bash -e
+cd /myrun
+\$WITH_CONDA
+set -x
+
+  # Single node
+  if [ \$SLURM_LOCALID -ne 0 ] ; then
+    exit 0
+  fi
+  
+  if which ds_report &> /dev/null ; then
+    ds_report
+  fi
+EOF
+chmod +x run.sh 
+
+$SCMD \
+    -B $(pwd):/myrun \
     $1 \
     /myrun/run.sh |& tee res.log

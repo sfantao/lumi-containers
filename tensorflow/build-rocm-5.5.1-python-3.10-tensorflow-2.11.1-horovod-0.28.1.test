@@ -11,6 +11,9 @@ cat > run.sh << EOF
 cd /myrun
 \$WITH_CONDA
 set -x
+
+export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
+
 # -b minbytes
 # -e maxbytes
 # -f increment factor

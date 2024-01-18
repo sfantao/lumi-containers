@@ -116,4 +116,6 @@ RUN $WITH_CONDA; set -eux ; \
   pip install /opt/wheels/torchtext-*.whl
 RUN $WITH_CONDA; set -eux ; \
   pip install /opt/wheels/torchaudio-*.whl
+RUN $WITH_CONDA; set -eux ; \
+  pip install deepspeed==0.12.3
   
