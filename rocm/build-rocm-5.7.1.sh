@@ -4,6 +4,8 @@ set -o pipefail
 cat \
   ../common/Dockerfile.header \
   ../common/Dockerfile.rocm-5.7.1  \
+  ../common/Dockerfile.aws-ofi-rccl \
+  ../common/Dockerfile.rccltest \
   $DOCKERFILE \
 > $DOCKERFILE_TMP
 

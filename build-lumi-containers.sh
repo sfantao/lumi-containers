@@ -143,7 +143,7 @@ for i in $files ; do
     #
     # Build singularity images remotely if they do not exist.
     #
-    ssh lumi "bash -c 'set -ex ; if [ -f ${sif} ] ; then echo "${sif} already exists!" ; else rm -rf ${rf1}*.sif ; singularity build ${sif} docker-archive://${tarf} ; chmod o+rx ${sif} ${tarf} ; fi'"
+    ssh lumi "bash -c 'set -ex ; if [ -f ${sif} ] ; then echo "${sif} already exists!" ; else rm -rf ${rf1}*.sif ; SINGULARITY_TMPDIR=${LUMI_TEST_FOLDER}/.tmp singularity build ${sif} docker-archive://${tarf} ; chmod o+rx ${sif} ${tarf} ; fi'"
 
     #
     # Add entry to test script.
