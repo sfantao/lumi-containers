@@ -11,6 +11,10 @@ RUN set -eux ; \
 RUN set -eux ; \
   amdgpu-install -y --no-dkms --usecase=hiplibsdk,rocm --rocmrelease=$ROCM_RELEASE
 
+RUN set -eux ; \
+  rm -rf /opt/rocm-*/bin/amd* ; \
+  zypper --no-gpg-checks -n install -y --force miopen-hip-gfx90a-110kdb
+
 #
 # ROCm environment
 #

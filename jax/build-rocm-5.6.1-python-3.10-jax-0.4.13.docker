@@ -34,6 +34,17 @@ RUN $WITH_CONDA; set -eux ; \
 ENV WITH_CONDA "source /opt/miniconda3/bin/activate jax"
 
 #
+# Need to remove circular link
+#
+RUN set -eux ; \
+  for i in amd_detail/amd_detail nvidia_detail/nvidia_detail hcc_detail/amd_detail nvcc_detail/nvidia_detail ; \
+  do \
+    rm -rf $ROCM_PATH/include/hip/$i; \
+    mkdir $ROCM_PATH/include/hip/$i; \
+    cp -rf $ROCM_PATH/include/hip/$i/../* $ROCM_PATH/include/hip/$i || true; \
+  done
+
+#
 # Install JAX
 #
 ARG JAX_VERSION

@@ -10,7 +10,10 @@ RUN set -eux ; \
 
 # This version install returns an 106 error while postprocessing kernel modules.
 RUN set -eux ; \
- amdgpu-install -y --no-dkms --usecase=rocm --rocmrelease=$ROCM_RELEASE || true
+  amdgpu-install -y --no-dkms --usecase=rocm --rocmrelease=$ROCM_RELEASE || true
+
+RUN set -eux ; \
+  zypper --no-gpg-checks -n install -y --force miopen-hip-gfx90a-110kdb
 
 #
 # ROCm environment

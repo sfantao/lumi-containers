@@ -28,7 +28,7 @@ $SCMD \
     /myrun/run.sh |& tee res.log
 
 # Check BW for large transfers which are more stable
-for i in $(grep -r 'half     sum' res.log | tail -n5 | awk '{print $7}') ; do
+for i in $(grep -r 'half     sum' res.log | tail -n5 | awk '{print $8}') ; do
   echo "Measure RCCL test all-reduce BW to be $i..."
   if (( $(echo "$i < 29.00" |bc -l) )); then
     echo "Too low!!!";
