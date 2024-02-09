@@ -20,7 +20,6 @@ export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
 # -g gpus per thread
 /opt/rccltests/all_reduce_perf -z 1 -b 2M -e 2048M -f 2 -g 1 -t 1 -R 1 -n 80 -w 5 -d half
 
-# python -c "print('hello')"
 EOF
 chmod +x run.sh 
 
@@ -249,6 +248,64 @@ set -x
   fi
 EOF
 chmod +x run.sh 
+
+$SCMD \
+    -B $(pwd):/myrun \
+    $1 \
+    /myrun/run.sh |& tee res.log
+
+#
+# Test flash attention
+#
+
+rm -rf run.sh
+cat > run.sh << EOF
+#!/bin/bash -e
+cd /myrun
+\$WITH_CONDA
+set -x
+
+  # Single node
+  if [ \$SLURM_LOCALID -ne 0 ] ; then
+    exit 0
+  fi
+
+  # Disable xformers to make sure they don't interfere with flash attention testing.
+  if [ -f /opt/wheels/flash_attn-benchmarks/benchmark_flash_attention.py ] ; then
+    sed 's#import xformers.ops as xops#xops = None#g' /opt/wheels/flash_attn-benchmarks/benchmark_flash_attention.py > benchmark_flash_attention.py
+    python -u benchmark_flash_attention.py
+  fi
+EOF
+chmod +x run.sh
+
+$SCMD \
+    -B $(pwd):/myrun \
+    $1 \
+    /myrun/run.sh |& tee res.log
+
+#
+# Test xformers
+#
+
+rm -rf run.sh
+cat > run.sh << EOF
+#!/bin/bash -e
+cd /myrun
+\$WITH_CONDA
+set -x
+
+  # Single node
+  if [ \$SLURM_LOCALID -ne 0 ] ; then
+    exit 0
+  fi
+
+  # Disable xformers to make sure they don't interfere with flash attention testing.
+  if python -c 'import xformers ; print(xformers.__file__)' ; then
+    script="\$(dirname \$(python -c 'import xformers ; print(xformers.__file__)'))/benchmarks/benchmark_mem_eff_attention.py"
+    python -u \$script
+  fi
+EOF
+chmod +x run.sh
 
 $SCMD \
     -B $(pwd):/myrun \

@@ -18,9 +18,11 @@ alphafold: alphafold/build-rocm-5.5.3-python-3.9-alphafold-69afc4d.done
 
 mpi4py: mpi4py/build-rocm-5.4.5-python-3.10-mpi4py-3.1.4.done
 
+
 pytorch_deps := pytorch/build-rocm-5.5.1-python-3.10-pytorch-v2.0.1.done
 pytorch_deps += pytorch/build-rocm-5.5.1-python-3.10-pytorch-v2.0.1-debugsymbols.done
 pytorch_deps += pytorch/build-rocm-5.6.1-python-3.10-pytorch-v2.1.0.done
+pytorch_deps += pytorch/build-rocm-5.6.1-python-3.10-pytorch-v2.2.0.done
 pytorch: $(pytorch_deps)
 
 tensorflow: tensorflow/build-rocm-5.5.1-python-3.10-tensorflow-2.11.1-horovod-0.28.1.done
@@ -30,6 +32,7 @@ rocm_deps += rocm/build-rocm-5.4.6.done
 rocm_deps += rocm/build-rocm-5.5.1.done
 rocm_deps += rocm/build-rocm-5.5.3.done
 rocm_deps += rocm/build-rocm-5.6.1.done
+rocm_deps += rocm/build-rocm-5.6.0.done
 rocm_deps += rocm/build-rocm-5.7.1.done
 rocm: $(rocm_deps)
 

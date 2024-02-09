@@ -137,13 +137,16 @@ for i in $files ; do
     # docker push $remote_tag
     
     if ssh lumi "[[ ! -f ${tarf} ]]" ; then
+      echo "Uploading ${tarf}"
       docker save $local_tag | xz -z -T32 -c | ssh lumi "bash -c 'rm -rf ${rf1}*.tar ; xz -d -c > ${tarf}'"
+    else
+      echo "File ${tarf} exists!"
     fi
 
     #
     # Build singularity images remotely if they do not exist.
     #
-    ssh lumi "bash -c 'set -ex ; if [ -f ${sif} ] ; then echo "${sif} already exists!" ; else rm -rf ${rf1}*.sif ; SINGULARITY_TMPDIR=${LUMI_TEST_FOLDER}/.tmp singularity build ${sif} docker-archive://${tarf} ; chmod o+rx ${sif} ${tarf} ; fi'"
+    ssh lumi2 "bash -c 'set -ex ; if [ -f ${sif} ] ; then echo "${sif} already exists!" ; else rm -rf ${rf1}*.sif ; SINGULARITY_TMPDIR=${LUMI_TEST_FOLDER}/.tmp singularity build --fix-perms ${sif} docker-archive://${tarf} ; chmod o+rx ${sif} ${tarf} ; fi'"
 
     #
     # Add entry to test script.

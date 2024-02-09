@@ -1,0 +1,14 @@
+#!/bin/bash -e
+
+bypass=0
+if [[ "$@" == *" -c "* ]] ; then bypass=1 ; fi
+
+if [ $bypass -eq 1 ] ; then 
+    target=$(echo "$@" | grep -o '[^ ]*\.o')
+    echo "bypassing default hipcc for $target"
+    ROCM_PATH=$COMPILE_ROCM_PATH $COMPILE_ROCM_PATH/bin/hipcc "$@"
+    exit $?
+fi
+
+$ROCM_PATH/bin/hipcc.bak "$@"
+exit $?

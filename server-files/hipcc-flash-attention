@@ -1,0 +1,27 @@
+#!/bin/bash -e
+
+bypass=0
+if [[ "$@" == *"-o /opt/mybuild/build/temp.linux-x86_64-cpython-310/csrc/flash_attn_rocm/src/flash_bwd_runner_batched_hdim128_bf16_causal_gfx9x_hip.o"* ]] ; then bypass=1 ; fi
+if [[ "$@" == *"-o /opt/mybuild/build/temp.linux-x86_64-cpython-310/csrc/flash_attn_rocm/src/flash_bwd_runner_batched_hdim128_fp16_causal_gfx9x_hip.o"* ]] ; then bypass=1 ; fi
+if [[ "$@" == *"-o /opt/mybuild/build/temp.linux-x86_64-cpython-310/csrc/flash_attn_rocm/src/flash_bwd_runner_batched_hdim32_bf16_causal_gfx9x_hip.o"* ]] ; then bypass=1 ; fi
+if [[ "$@" == *"-o /opt/mybuild/build/temp.linux-x86_64-cpython-310/csrc/flash_attn_rocm/src/flash_bwd_runner_batched_hdim32_fp16_causal_gfx9x_hip.o"* ]] ; then bypass=1 ; fi
+if [[ "$@" == *"-o /opt/mybuild/build/temp.linux-x86_64-cpython-310/csrc/flash_attn_rocm/src/flash_bwd_runner_batched_hdim64_bf16_causal_gfx9x_hip.o"* ]] ; then bypass=1 ; fi
+if [[ "$@" == *"-o /opt/mybuild/build/temp.linux-x86_64-cpython-310/csrc/flash_attn_rocm/src/flash_bwd_runner_batched_hdim64_fp16_causal_gfx9x_hip.o"* ]] ; then bypass=1 ; fi
+if [[ "$@" == *"-o /opt/mybuild/build/temp.linux-x86_64-cpython-310/csrc/flash_attn_rocm/src/flash_bwd_runner_grouped_hdim128_bf16_causal_gfx9x_hip.o"* ]] ; then bypass=1 ; fi
+if [[ "$@" == *"-o /opt/mybuild/build/temp.linux-x86_64-cpython-310/csrc/flash_attn_rocm/src/flash_bwd_runner_grouped_hdim128_fp16_causal_gfx9x_hip.o"* ]] ; then bypass=1 ; fi
+if [[ "$@" == *"-o /opt/mybuild/build/temp.linux-x86_64-cpython-310/csrc/flash_attn_rocm/src/flash_bwd_runner_grouped_hdim32_bf16_causal_gfx9x_hip.o"* ]] ; then bypass=1 ; fi
+if [[ "$@" == *"-o /opt/mybuild/build/temp.linux-x86_64-cpython-310/csrc/flash_attn_rocm/src/flash_bwd_runner_grouped_hdim32_fp16_causal_gfx9x_hip.o"* ]] ; then bypass=1 ; fi
+if [[ "$@" == *"-o /opt/mybuild/build/temp.linux-x86_64-cpython-310/csrc/flash_attn_rocm/src/flash_bwd_runner_grouped_hdim64_bf16_causal_gfx9x_hip.o"* ]] ; then bypass=1 ; fi
+if [[ "$@" == *"-o /opt/mybuild/build/temp.linux-x86_64-cpython-310/csrc/flash_attn_rocm/src/flash_bwd_runner_grouped_hdim64_fp16_causal_gfx9x_hip.o"* ]] ; then bypass=1 ; fi
+
+if [ $bypass -eq 1 ] ; then 
+    target=$(echo "$@" | grep -o '[^ ]*\.o')
+    echo "bypassing default hipcc for $target"
+    ROCM_PATH=/opt/rocm-5.6.0 /opt/rocm-5.6.0/bin/hipcc "$@"
+    exit $?
+fi
+
+/opt/rocm-5.6.1/bin/hipcc.bak "$@"
+exit $?
+
+/opt/rocm-5.6.1/bin/hipcc  -I/opt/mybuild/csrc/flash_attn_rocm -I/opt/mybuild/csrc/flash_attn_rocm/src -I/opt/mybuild/csrc/flash_attn_rocm/composable_kernel/include -I/opt/mybuild/csrc/flash_attn_rocm/composable_kernel/library/include -I/opt/miniconda3/envs/pytorch/lib/python3.10/site-packages/torch/include -I/opt/miniconda3/envs/pytorch/lib/python3.10/site-packages/torch/include/torch/csrc/api/include -I/opt/miniconda3/envs/pytorch/lib/python3.10/site-packages/torch/include/TH -I/opt/miniconda3/envs/pytorch/lib/python3.10/site-packages/torch/include/THC -I/opt/miniconda3/envs/pytorch/lib/python3.10/site-packages/torch/include/THH -I/opt/rocm-5.6.1/include -I/opt/miniconda3/envs/pytorch/include/python3.10 -c -c /opt/mybuild/csrc/flash_attn_rocm/src/flash_bwd_runner_grouped_hdim64_fp16_causal_gfx9x_hip.hip -o /opt/mybuild/build/temp.linux-x86_64-cpython-310/csrc/flash_attn_rocm/src/flash_bwd_runner_grouped_hdim64_fp16_causal_gfx9x_hip.o -fPIC -D__HIP_PLATFORM_AMD__=1 -DUSE_ROCM=1 -DCUDA_HAS_FP16=1 -D__HIP_NO_HALF_OPERATORS__=1 -D__HIP_NO_HALF_CONVERSIONS__=1 -O3 -std=c++20 -DNDEBUG -U__CUDA_NO_HALF_OPERATORS__ -U__CUDA_NO_HALF_CONVERSIONS__ --offload-arch=gfx90a -DTORCH_API_INCLUDE_EXTENSION_H '-DPYBIND11_COMPILER_TYPE="_gcc"' '-DPYBIND11_STDLIB="_libstdcpp"' '-DPYBIND11_BUILD_ABI="_cxxabi1011"' -DTORCH_EXTENSION_NAME=flash_attn_2_cuda -D_GLIBCXX_USE_CXX11_ABI=0 -fno-gpu-rdc    
