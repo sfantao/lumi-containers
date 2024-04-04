@@ -1,0 +1,87 @@
+#FROM registry.suse.com/bci/bci-base:15.3.17.20.5
+#FROM registry.suse.com/bci/bci-base:15.3.17.20.101
+#FROM registry.suse.com/bci/bci-base:15.3.17.20.145
+FROM registry.suse.com/bci/bci-base:15.4.27.14.99
+
+ARG SERVER_PORT
+
+#
+# Disable BCI repros
+#
+
+RUN set -eux ; \
+  sed -i 's#enabled=1#enabled=0#g' /etc/zypp/repos.d/SLE_BCI.repo 
+
+RUN set -eux ; \
+  zypper -n addrepo http://download.opensuse.org/distribution/leap/15.4/repo/oss/ myrepo3 ; \
+  echo 'gpgcheck=0' >> /etc/zypp/repos.d/myrepo3.repo ; \
+  zypper -n addrepo https://download.opensuse.org/repositories/devel:/languages:/perl/SLE_15_SP4 myrepo4 ; \
+  echo 'gpgcheck=0' >> /etc/zypp/repos.d/myrepo4.repo
+  
+RUN set -eux ; \
+  sed -i 's#gpgcheck=1#gpgcheck=0#g' /etc/zypp/repos.d/*.repo
+
+#
+# Install build dependencies
+#
+RUN set -eux; \
+  zypper -n refresh ; \
+  zypper --no-gpg-checks -n install -y --force-resolution \
+    git cmake gcc10 gcc10-c++ gcc10-fortran zlib-devel numactl awk patch tar autoconf automake libtool libjson-c-devel graphviz ncurses-devel nano which ; \
+  zypper clean
+
+#
+# Cray info
+#
+ENV CPE_VERSION "23.09"
+ENV CPE_URL="http://localhost:$SERVER_PORT/cpe-$CPE_VERSION.tar"
+ENV LIBFABRIC_VERSION "1.15.2.0" 
+ENV LIBFABRIC_PATH /opt/cray/libfabric/$LIBFABRIC_VERSION
+ENV MPICH_PATH "/opt/cray/pe/mpich/8.1.27/ofi/crayclang/14.0"
+ENV LD_LIBRARY_PATH /opt/cray-deps:$LIBFABRIC_PATH/lib64:$MPICH_PATH/lib:/opt/cray/pe/lib64:/opt/cray/pe/lib64/cce
+
+ENV REMOVE_CRAY_DEPS 'rm -rf /opt/cray /opt/cray-deps /usr/lib64/libcxi.so*'
+
+ENV ROCM_RPM https://repo.radeon.com/amdgpu-install/5.5.1/sle/15.3/amdgpu-install-5.5.50501-1.noarch.rpm 
+ENV ROCM_RELEASE 5.5.1
+
+RUN set -eux ; \
+  zypper --no-gpg-checks -n install $ROCM_RPM
+
+RUN set -eux ; \
+  sed -i 's#gpgcheck=1#gpgcheck=0#g' /etc/zypp/repos.d/*.repo
+
+RUN set -eux ; \
+ amdgpu-install -y --no-dkms --usecase=rocm --rocmrelease=$ROCM_RELEASE
+
+#
+# ROCm environment
+#
+ENV ROCM_PATH /opt/rocm-$ROCM_RELEASE
+ENV PATH $ROCM_PATH/bin:$ROCM_PATH/llvm/bin:$PATH
+ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:$ROCM_PATH/lib
+
+#
+# Mark RCCL as non-debug - this can me overriden by RCCL debug build. 
+#
+ENV RCCL_DEBUG 0
+
+#
+# Fix rocm-smi lib
+#
+#RUN set -eux ; \
+#  cd /opt ; \
+#  curl -LO http://localhost:$SERVER_PORT/rocm-5.5.1-rocm-smi-lib.patch ; \
+#  git clone -b rocm-$ROCM_RELEASE https://github.com/RadeonOpenCompute/rocm_smi_lib /opt/mybuild ; \
+#  mkdir -p /opt/mybuild/build ; \
+#  \
+#  cd /opt/mybuild ; \
+#  git apply < /opt/rocm-5.5.1-rocm-smi-lib.patch ; \
+#  rm -rf /opt/rocm-5.5.1-rocm-smi-lib.patch ; \
+#  \  
+#  cd /opt/mybuild/build ; \
+#  cmake -DCMAKE_INSTALL_PREFIX=/opt/rocm-patched .. ; \
+#  make -j32 ; \
+#  make -j32 install ; \
+#  cd / ; rm -rf /opt/mybuild
+#

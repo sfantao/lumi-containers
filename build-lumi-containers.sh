@@ -146,7 +146,7 @@ for i in $files ; do
     #
     # Build singularity images remotely if they do not exist.
     #
-    ssh lumi2 "bash -c 'set -ex ; if [ -f ${sif} ] ; then echo "${sif} already exists!" ; else rm -rf ${rf1}*.sif ; SINGULARITY_TMPDIR=${LUMI_TEST_FOLDER}/.tmp singularity build --fix-perms ${sif} docker-archive://${tarf} ; chmod o+rx ${sif} ${tarf} ; fi'"
+    ssh lumi2 "bash -c 'set -ex ; if [ -f ${sif} ] ; then echo "${sif} already exists!" ; else rm -rf ${rf1}*.sif ; mkdir -p /tmp/samantao-containers ; rm -rf /tmp/samantao-containers/* ; mkdir -p /tmp/.samantao-tmp ; SINGULARITY_TMPDIR=/tmp/.samantao-tmp singularity build --fix-perms /tmp/samantao-containers/a.sif docker-archive://${tarf} ; cp -rf /tmp/samantao-containers/a.sif ${sif} ; chmod o+rx ${sif} ${tarf} ; fi'"
 
     #
     # Add entry to test script.

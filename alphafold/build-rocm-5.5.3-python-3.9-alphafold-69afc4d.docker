@@ -59,21 +59,21 @@ RUN $WITH_CONDA; set -eux ; \
   conda create -n alphafold python=$PYTHON_VERSION ; \
   conda activate alphafold ; \
   conda install -y \
-    swig \
+    swig==4.0.2 \
     numpy \
-    Cython \
-    dm-tree \
-    biopython \
-    pandas ; \
+    Cython==3.0.6 \
+    dm-tree==0.1.7 \
+    biopython==1.78 \
+    pandas==2.1.4 ; \
   conda install -y -c conda-forge \
     pdbfixer==1.9 ; \
   conda install -y -c bioconda \
-    kalign2 ; \
+    kalign2==2.04 ; \
   pip install \
     tensorflow-rocm==2.11.1.550 \
-    ml-collections \
-    dm-haiku \
-    hmmer
+    ml-collections==0.1.1 \
+    dm-haiku==0.0.10 \
+    hmmer==0.2.4
 
 ENV WITH_CONDA "source /opt/miniconda3/bin/activate alphafold"
 

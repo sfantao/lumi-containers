@@ -302,7 +302,61 @@ set -x
   # Disable xformers to make sure they don't interfere with flash attention testing.
   if python -c 'import xformers ; print(xformers.__file__)' ; then
     script="\$(dirname \$(python -c 'import xformers ; print(xformers.__file__)'))/benchmarks/benchmark_mem_eff_attention.py"
-    python -u \$script
+    # This is a bit flaky because of triton JIT that randomly fails to find the executable.
+    python -u \$script || true
+  fi
+EOF
+chmod +x run.sh
+
+$SCMD \
+    -B $(pwd):/myrun \
+    $1 \
+    /myrun/run.sh |& tee res.log
+
+#
+# Test vLLM
+#
+cat > vllm_testcase.py << EOF
+from vllm import LLM, SamplingParams
+
+# Sample prompts.
+prompts = [
+    "Hello, my name is",
+    "The president of the United States is",
+    "The capital of France is",
+    "The future of AI is",
+]
+# Create a sampling params object.
+sampling_params = SamplingParams(temperature=0.8, top_p=0.95)
+
+# Create an LLM.
+llm = LLM(model="facebook/opt-125m", download_dir="/myrun/vllm-download-dir")
+# Generate texts from the prompts. The output is a list of RequestOutput objects
+# that contain the prompt, generated text, and other information.
+outputs = llm.generate(prompts, sampling_params)
+# Print the outputs.
+for output in outputs:
+    prompt = output.prompt
+    generated_text = output.outputs[0].text
+    print(f"Prompt: {prompt!r}, Generated text: {generated_text!r}")
+    
+EOF
+
+rm -rf run.sh
+cat > run.sh << EOF
+#!/bin/bash -e
+cd /myrun
+\$WITH_CONDA
+set -x
+
+  # Single node
+  if [ \$SLURM_LOCALID -ne 0 ] ; then
+    exit 0
+  fi
+
+  # Disable xformers to make sure they don't interfere with flash attention testing.
+  if python -c 'import vllm ; print(vllm.__version__)' ; then
+    python -u vllm_testcase.py
   fi
 EOF
 chmod +x run.sh

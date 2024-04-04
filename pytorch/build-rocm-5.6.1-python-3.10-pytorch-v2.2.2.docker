@@ -22,8 +22,8 @@ ARG PYTORCH_DEBUG
 ARG PYTORCH_RELWITHDEBINFO
 
 RUN $WITH_CONDA; set -eux ; \
-  if [[ "$PYTORCH_VERSION" != "2.2.0" ]] ; then \
-    echo "Assuming Pytorch version 2.2.0" ; \
+  if [[ "$PYTORCH_VERSION" != "2.2.2" ]] ; then \
+    echo "Assuming Pytorch version 2.2.2" ; \
     false ; \
   fi ; \
   cd /opt/wheels ; \
@@ -57,16 +57,44 @@ RUN $WITH_CONDA; set -eux ; \
   ROCM_VERSION_MINOR=$(echo $ROCM_RELEASE | cut -d'.' -f2) ; \
   PYTHON_VERSION_MAJOR=$(echo $PYTHON_VERSION | cut -d'.' -f1) ; \
   PYTHON_VERSION_MINOR=$(echo $PYTHON_VERSION | cut -d'.' -f2) ; \
-  pip3 install --pre torchvision==0.17.0+rocm${ROCM_VERSION_MAJOR}.${ROCM_VERSION_MINOR} --index-url https://download.pytorch.org/whl/ ; \
+  pip3 install --pre torchvision==0.17.2+rocm${ROCM_VERSION_MAJOR}.${ROCM_VERSION_MINOR} --index-url https://download.pytorch.org/whl/ ; \
   pip3 install --pre torchdata==0.7.1 --index-url https://download.pytorch.org/whl/ ; \
-  pip3 install --pre torchtext==0.17.0 --index-url https://download.pytorch.org/whl/ ; \
+  pip3 install --pre torchtext==0.17.2 --index-url https://download.pytorch.org/whl/ ; \
   pip3 install --pre torchaudio==${PYTORCH_VERSION}+rocm${ROCM_VERSION_MAJOR}.${ROCM_VERSION_MINOR} --index-url https://download.pytorch.org/whl/ ; \
   true
 
-RUN $WITH_CONDA; set -eux ; \
-  pip install deepspeed==0.12.3
+ENV RUSTUP_HOME /opt/rust
+ENV CARGO_HOME /opt/rust
+RUN set -eux ; \
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > /opt/rust.sh ; \
+  sh /opt/rust.sh -y --no-modify-path ; \
+  rm -rf /opt/rust.sh
 
-# Tested with flash-attention ae7928c5aed53cf6e75cc792baa9126b2abfcf1a
+ENV PATH $PATH:/opt/rust/bin
+
+RUN $WITH_CONDA; set -eux ; \
+  ln -s $(which gcc-10) /opt/rust/bin/cc ; \
+  CC=gcc-10 CXX=g++-10 \
+  DS_BUILD_AIO=0 \
+  DS_BUILD_CCL_COMM=1 \
+  DS_BUILD_CPU_ADAM=0 \
+  DS_BUILD_CPU_LION=0 \
+  DS_BUILD_EVOFORMER_ATTN=0 \
+  DS_BUILD_FUSED_ADAM=1 \
+  DS_BUILD_FUSED_LION=1 \
+  DS_BUILD_CPU_ADAGRAD=0 \
+  DS_BUILD_FUSED_LAMB=1 \
+  DS_BUILD_QUANTIZER=0 \
+  DS_BUILD_RANDOM_LTD=0 \
+  DS_BUILD_SPARSE_ATTN=0 \
+  DS_BUILD_TRANSFORMER=0 \
+  DS_BUILD_TRANSFORMER_INFERENCE=0 \
+  DS_BUILD_STOCHASTIC_TRANSFORMER=1 \
+  pip install deepspeed==0.14.0 --global-option="build_ext" --global-option="-j32" ; \
+  ds_report ; \
+  true
+
+# Tested with flash-attention 2554f49
 RUN $WITH_CONDA; set -eux ; \
   cd /opt ; \
   curl -LO http://localhost:$SERVER_PORT/rocm-5.6.0.tar ; \
@@ -97,7 +125,7 @@ RUN $WITH_CONDA; set -eux ; \
 RUN $WITH_CONDA; set -eux ; \
   pip install /opt/wheels/flash_attn-*.whl
 
-#Tested with xformers 79c554cdc3d1a0950ee98a5c0053b05c5ffa7466
+#Tested with xformers 82368ac
 RUN $WITH_CONDA; set -eux ; \
   cd /opt ; \
   curl -LO http://localhost:$SERVER_PORT/rocm-5.7.1.tar ; \
@@ -109,12 +137,13 @@ RUN $WITH_CONDA; set -eux ; \
   mv hipcc hipcc.bak ; \
   mv hipcc-xformers hipcc ; \
   \
-  git clone --recursive -b develop https://github.com/sfantao/xformers /opt/mybuild ; \
+  git clone --recursive -b main https://github.com/ROCm/xformers /opt/mybuild ; \
   cd /opt/mybuild ; \
   \
   rm -rf build ; \
   CC=gcc-10 \
   CXX=g++-10 \
+  HIP_ARCHITECTURES="gfx90a" \
   PYTORCH_ROCM_ARCH="gfx90a" \
   COMPILE_ROCM_PATH=/opt/rocm-5.7.1 \
   MAX_JOBS=48 \

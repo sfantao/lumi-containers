@@ -23,6 +23,8 @@ pytorch_deps := pytorch/build-rocm-5.5.1-python-3.10-pytorch-v2.0.1.done
 pytorch_deps += pytorch/build-rocm-5.5.1-python-3.10-pytorch-v2.0.1-debugsymbols.done
 pytorch_deps += pytorch/build-rocm-5.6.1-python-3.10-pytorch-v2.1.0.done
 pytorch_deps += pytorch/build-rocm-5.6.1-python-3.10-pytorch-v2.2.0.done
+pytorch_deps += pytorch/build-rocm-5.6.1-python-3.10-pytorch-v2.2.2.done
+pytorch_deps += pytorch/build-rocm-5.6.1-python-3.10-pytorch-v2.2.2-vllm-v0.4.0.post1.done
 pytorch: $(pytorch_deps)
 
 tensorflow: tensorflow/build-rocm-5.5.1-python-3.10-tensorflow-2.11.1-horovod-0.28.1.done

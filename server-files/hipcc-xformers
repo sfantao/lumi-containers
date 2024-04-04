@@ -6,7 +6,7 @@ if [[ "$@" == *" -c "* ]] ; then bypass=1 ; fi
 if [ $bypass -eq 1 ] ; then 
     target=$(echo "$@" | grep -o '[^ ]*\.o')
     echo "bypassing default hipcc for $target"
-    ROCM_PATH=$COMPILE_ROCM_PATH $COMPILE_ROCM_PATH/bin/hipcc "$@"
+    ROCM_PATH=$COMPILE_ROCM_PATH $COMPILE_ROCM_PATH/bin/hipcc $COMPILE_ROCM_PATH_EXTRA_FLAGS "$@"
     exit $?
 fi
 

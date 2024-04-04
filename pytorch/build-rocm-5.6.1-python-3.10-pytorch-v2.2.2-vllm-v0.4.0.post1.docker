@@ -22,8 +22,8 @@ ARG PYTORCH_DEBUG
 ARG PYTORCH_RELWITHDEBINFO
 
 RUN $WITH_CONDA; set -eux ; \
-  if [[ "$PYTORCH_VERSION" != "2.2.0" ]] ; then \
-    echo "Assuming Pytorch version 2.2.0" ; \
+  if [[ "$PYTORCH_VERSION" != "2.2.2" ]] ; then \
+    echo "Assuming Pytorch version 2.2.2" ; \
     false ; \
   fi ; \
   cd /opt/wheels ; \
@@ -57,16 +57,44 @@ RUN $WITH_CONDA; set -eux ; \
   ROCM_VERSION_MINOR=$(echo $ROCM_RELEASE | cut -d'.' -f2) ; \
   PYTHON_VERSION_MAJOR=$(echo $PYTHON_VERSION | cut -d'.' -f1) ; \
   PYTHON_VERSION_MINOR=$(echo $PYTHON_VERSION | cut -d'.' -f2) ; \
-  pip3 install --pre torchvision==0.17.0+rocm${ROCM_VERSION_MAJOR}.${ROCM_VERSION_MINOR} --index-url https://download.pytorch.org/whl/ ; \
+  pip3 install --pre torchvision==0.17.2+rocm${ROCM_VERSION_MAJOR}.${ROCM_VERSION_MINOR} --index-url https://download.pytorch.org/whl/ ; \
   pip3 install --pre torchdata==0.7.1 --index-url https://download.pytorch.org/whl/ ; \
-  pip3 install --pre torchtext==0.17.0 --index-url https://download.pytorch.org/whl/ ; \
+  pip3 install --pre torchtext==0.17.2 --index-url https://download.pytorch.org/whl/ ; \
   pip3 install --pre torchaudio==${PYTORCH_VERSION}+rocm${ROCM_VERSION_MAJOR}.${ROCM_VERSION_MINOR} --index-url https://download.pytorch.org/whl/ ; \
   true
 
-RUN $WITH_CONDA; set -eux ; \
-  pip install deepspeed==0.12.3
+ENV RUSTUP_HOME /opt/rust
+ENV CARGO_HOME /opt/rust
+RUN set -eux ; \
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > /opt/rust.sh ; \
+  sh /opt/rust.sh -y --no-modify-path ; \
+  rm -rf /opt/rust.sh
 
-# Tested with flash-attention ae7928c5aed53cf6e75cc792baa9126b2abfcf1a
+ENV PATH $PATH:/opt/rust/bin
+
+RUN $WITH_CONDA; set -eux ; \
+  ln -s $(which gcc-10) /opt/rust/bin/cc ; \
+  CC=gcc-10 CXX=g++-10 \
+  DS_BUILD_AIO=0 \
+  DS_BUILD_CCL_COMM=1 \
+  DS_BUILD_CPU_ADAM=0 \
+  DS_BUILD_CPU_LION=0 \
+  DS_BUILD_EVOFORMER_ATTN=0 \
+  DS_BUILD_FUSED_ADAM=1 \
+  DS_BUILD_FUSED_LION=1 \
+  DS_BUILD_CPU_ADAGRAD=0 \
+  DS_BUILD_FUSED_LAMB=1 \
+  DS_BUILD_QUANTIZER=0 \
+  DS_BUILD_RANDOM_LTD=0 \
+  DS_BUILD_SPARSE_ATTN=0 \
+  DS_BUILD_TRANSFORMER=0 \
+  DS_BUILD_TRANSFORMER_INFERENCE=0 \
+  DS_BUILD_STOCHASTIC_TRANSFORMER=1 \
+  pip install deepspeed==0.14.0 --global-option="build_ext" --global-option="-j32" ; \
+  ds_report ; \
+  true
+
+# Tested with flash-attention 2554f49
 RUN $WITH_CONDA; set -eux ; \
   cd /opt ; \
   curl -LO http://localhost:$SERVER_PORT/rocm-5.6.0.tar ; \
@@ -97,45 +125,59 @@ RUN $WITH_CONDA; set -eux ; \
 RUN $WITH_CONDA; set -eux ; \
   pip install /opt/wheels/flash_attn-*.whl
 
-#Tested with xformers 79c554cdc3d1a0950ee98a5c0053b05c5ffa7466
 RUN $WITH_CONDA; set -eux ; \
-  cd /opt ; \
-  curl -LO http://localhost:$SERVER_PORT/rocm-5.7.1.tar ; \
-  tar -xf rocm-5.7.1.tar ; \
-  \
-  cd $ROCM_PATH/bin ; \
-  curl -LO http://localhost:$SERVER_PORT/hipcc-xformers ; \
-  chmod +x hipcc-xformers ; \
-  mv hipcc hipcc.bak ; \
-  mv hipcc-xformers hipcc ; \
-  \
-  git clone --recursive -b develop https://github.com/sfantao/xformers /opt/mybuild ; \
+    pip uninstall -y  xformers ; \
+    cd /opt ; \
+    rm -rf /opt/mybuild-xformers ; \
+    git clone --recursive -b v0.0.23 https://github.com/facebookresearch/xformers /opt/mybuild-xformers ; \
+    cd /opt/mybuild-xformers; \
+    rm -rf .git ; \
+    echo "0.0.23" > version.txt ; \
+    CC=gcc-10 CXX=g++-10 python setup.py bdist_wheel; \
+    pip install dist/xformers-*.whl --no-deps; \
+    cd /opt ; rm -rf  /opt/mybuild-xformers ; \
+    true
+      
+ARG VLLM_VERSION
+RUN $WITH_CONDA; set -eux ; \
+  rm -rf /opt/mybuild ; \
+  git clone -b $VLLM_VERSION --recursive https://github.com/vllm-project/vllm /opt/mybuild ; \
   cd /opt/mybuild ; \
+  bash patch_xformers.rocm.sh ; \
+  pip install -r requirements-rocm.txt ; \
   \
-  rm -rf build ; \
-  CC=gcc-10 \
-  CXX=g++-10 \
-  PYTORCH_ROCM_ARCH="gfx90a" \
-  COMPILE_ROCM_PATH=/opt/rocm-5.7.1 \
-  MAX_JOBS=48 \
-    python setup.py bdist_wheel ; \
-  cp -rf dist/* /opt/wheels ; \
-  \
-  rm -rf /opt/rocm-5.7.1* ; \
-  rm -rf $ROCM_PATH/bin/hipcc ; \
-  mv $ROCM_PATH/bin/hipcc.bak $ROCM_PATH/bin/hipcc ; \
-  rm -rf /opt/mybuild 
-
-RUN $WITH_CONDA; set -eux ; \
-  pip install /opt/wheels/xformers-*.whl
+  rm -rf /opt/mybuild/myinclude ; \
+  cp -rf $CONDA_PREFIX/lib/python$PYTHON_VERSION/site-packages/triton/third_party/hip/include /opt/mybuild/myinclude ; \
+  patch -p0 /opt/mybuild/myinclude/hip/amd_detail/amd_hip_bf16.h rocm_patch/rocm_bf16.patch ; \
+  CPATH=/opt/mybuild/myinclude \
+  CC=gcc-10 CXX=g++-10 python setup.py bdist_wheel ; \
+  pip install /opt/mybuild/dist/vllm-*.whl; \
+  cd /opt ; \
+  rm -rf /opt/mybuild
 
 RUN $WITH_CONDA; set -eux ; \
   pip install \
     scipy==1.12.0 \
     matplotlib==3.8.2 \
     pandas==2.2.0 \
-    seaborn==0.13.2
+    seaborn==0.13.2 \
+    pyarrow==15.0.2
 
 # Work around wierd interaction with python interpreter in Triton.
 RUN set -eux ; \
   sed -i 's#mod, func, n_regs, n_spills#assert True; mod, func, n_regs, n_spills#g' /opt/miniconda3/envs/pytorch/lib/python3.10/site-packages/triton/compiler/compiler.py 
+
+# Conda version of filelock don't work as they should. Also pyarrow seems to be an vLLM dependency. 
+RUN $WITH_CONDA; set -eux ; \
+  pip install --upgrade \
+    filelock
+
+RUN $WITH_CONDA; set -eux ; \
+  cd $ROCM_PATH/lib ; \
+  curl -LO http://localhost:$SERVER_PORT/memgetinfo-fix.cpp ; \
+  mv memgetinfo-fix.cpp preload-me.cpp ; \
+  bash preload-me.cpp ; \
+  rm -rf preload-me.cpp
+
+RUN set -eux ; \
+  echo 'if [[ "$@" == "pytorch" ]] ; then export LD_PRELOAD=$ROCM_PATH/lib/libpreload-me.so ; fi' >> /opt/miniconda3/bin/activate
