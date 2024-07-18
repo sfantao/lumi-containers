@@ -167,4 +167,46 @@ RUN $WITH_CONDA; set -eux ; \
 
 # Work around wierd interaction with python interpreter in Triton.
 RUN set -eux ; \
-  sed -i 's#mod, func, n_regs, n_spills#assert True; mod, func, n_regs, n_spills#g' /opt/miniconda3/envs/pytorch/lib/python3.10/site-packages/triton/compiler/compiler.py 
+  sed -i 's#assert(False.*#assert is_hip(), "unsupported target"#g' /opt/miniconda3/envs/pytorch/lib/python3.10/site-packages/triton/compiler/compiler.py
+#  sed -i 's#mod, func, n_regs, n_spills#assert True; mod, func, n_regs, n_spills#g' /opt/miniconda3/envs/pytorch/lib/python3.10/site-packages/triton/compiler/compiler.py 
+
+# 
+# Bits and bytes
+#
+RUN $WITH_CONDA; set -eux ; \ 
+  git clone https://github.com/ROCm/bitsandbytes /opt/mybuild ; \
+  cd /opt/mybuild ; \
+  git checkout -b mydev 43d3976 ; \
+  pip install -r requirements-dev.txt ; \
+  cmake -DCOMPUTE_BACKEND=hip -DBNB_ROCM_ARCH="gfx90a" -S . ; \
+  nice make -j ; \
+  python setup.py bdist_wheel ; \
+  cp dist/bitsandbytes-*.whl /opt/wheels ; \
+  true
+
+RUN $WITH_CONDA; set -eux ; \ 
+  pip install /opt/wheels/bitsandbytes-*.whl
+
+#
+# Some other packages we may need
+#
+RUN $WITH_CONDA; set -eux ; \ 
+  pip install \
+    transformers==4.41.2 \
+    sentencepiece==0.2.0 \
+    protobuf==5.27.1 \
+    accelerate==0.31.0 
+
+#
+# Attempt to fix memory accounting error in ROCm 5.6.1
+#
+RUN $WITH_CONDA; set -eux ; \
+  cd $ROCM_PATH/lib ; \
+  curl -LO http://localhost:$SERVER_PORT/memgetinfo-fix.cpp ; \
+  echo "9e5ac400275f318d9fe94c55d769b5990374eeb30120e4b8dc61634218238a34  memgetinfo-fix.cpp" | shasum -c - ; \
+  mv memgetinfo-fix.cpp preload-me.cpp ; \
+  bash preload-me.cpp ; \
+  rm -rf preload-me.cpp
+
+RUN set -eux ; \
+  echo 'if [[ "$@" == "pytorch" ]] ; then export LD_PRELOAD=$ROCM_PATH/lib/libpreload-me.so ; fi' >> /opt/miniconda3/bin/activate

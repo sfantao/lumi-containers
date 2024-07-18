@@ -25,7 +25,11 @@ RUN $WITH_CONDA ; set -eux ; \
   echo "library_dirs         = %(mpi_dir)s/lib:%(mpi_dir)s/../../../gtl/lib:$LIBFABRIC_PATH/lib64:/opt/cray/pe/lib64:/opt/cray/pe/lib64/cce/:/opt/cray-deps" >> mpi.cfg ; \
   echo "include_dirs         = %(mpi_dir)s/include" >> mpi.cfg ; \
   \
-  python setup.py build --mpi=lumi ; \
-  python setup.py install ; \
+  CC=clang CXX=clang++ python setup.py build --mpi=lumi ; \
+  CC=clang CXX=clang++ python setup.py bdist_wheel ; \
+  cp dist/mpi4py-*.whl /opt/wheels ; \
   cd / ; rm -rf /opt/builds ; \
   $REMOVE_CRAY_DEPS
+
+RUN $WITH_CONDA ; set -eux ; \
+  pip install /opt/wheels/mpi4py-*.whl

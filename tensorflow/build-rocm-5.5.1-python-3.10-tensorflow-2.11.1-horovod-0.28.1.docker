@@ -46,4 +46,12 @@ ARG OPENNMT_VERSION
 RUN $WITH_CONDA ; set -eux ; \
   if [ -z "$OPENNMT_VERSION" ] ; then exit 0; fi ; \
   pip install opennmt-tf==$OPENNMT_VERSION
-    
+
+#
+# Fix SLURM detection
+#
+RUN set -eux ; \
+  cd /opt/miniconda3/envs/tensorflow/lib/python3.10/site-packages/tensorflow/python/distribute/cluster_resolver ; \
+  mv slurm_cluster_resolver.py slurm_cluster_resolver.py.orig ; \
+  curl -LO https://raw.githubusercontent.com/tensorflow/tensorflow/66e587c780c59f6bad2ddae5c45460440002dc68/tensorflow/python/distribute/cluster_resolver/slurm_cluster_resolver.py
+  

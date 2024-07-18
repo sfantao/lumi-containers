@@ -208,3 +208,14 @@ $SCMD \
     -B $(pwd):/myrun \
     $1 \
     /myrun/run.sh |& tee res.log
+
+#
+# Second test to known issue in SLURM cluster resolver.
+#
+rm -rf tensorflow2_synthetic_benchmark.py
+curl -o tensorflow2_synthetic_benchmark.py -L https://raw.githubusercontent.com/mihkeltiks/LUMI-docs-files/main/TensorFlow/tf2_distr.py
+
+$SCMD \
+    -B $(pwd):/myrun \
+    $1 \
+    /myrun/run.sh |& tee res.log

@@ -1,0 +1,391 @@
+#
+# Install conda environment
+# 
+ARG PYTHON_VERSION
+RUN $WITH_CONDA; set -eux ; \
+  conda create -n pytorch python=$PYTHON_VERSION ; \
+  conda activate pytorch ; \
+  conda install -y ninja pillow cmake pyyaml
+ENV WITH_CONDA "source /opt/miniconda3/bin/activate pytorch"
+
+#
+# Install pytorch
+# 
+
+# Repository for the wheel files
+RUN set -eux ; \
+  mkdir /opt/wheels
+  
+ENV PYTORCH_ROCM_ARCH gfx90a 
+ARG PYTORCH_VERSION
+ARG PYTORCH_DEBUG
+ARG PYTORCH_RELWITHDEBINFO
+
+RUN $WITH_CONDA; set -eux ; \
+  if [[ "$PYTORCH_VERSION" != "2.2.2" ]] ; then \
+    echo "Assuming Pytorch version 2.2.2" ; \
+    false ; \
+  fi ; \
+  cd /opt/wheels ; \
+  ROCM_VERSION_MAJOR=$(echo $ROCM_RELEASE | cut -d'.' -f1) ; \
+  ROCM_VERSION_MINOR=$(echo $ROCM_RELEASE | cut -d'.' -f2) ; \
+  PYTHON_VERSION_MAJOR=$(echo $PYTHON_VERSION | cut -d'.' -f1) ; \
+  PYTHON_VERSION_MINOR=$(echo $PYTHON_VERSION | cut -d'.' -f2) ; \
+  pip3 install --pre torch==${PYTORCH_VERSION}+rocm${ROCM_VERSION_MAJOR}.${ROCM_VERSION_MINOR} --index-url https://download.pytorch.org/whl/
+
+#
+# Pytorch dependencies
+#
+
+RUN $WITH_CONDA; set -eux ; \
+  rm -rf $CONDA_PREFIX/lib/libstdc++.so* ; \
+  \  
+  git clone --recursive https://github.com/ROCmSoftwarePlatform/apex /opt/mybuild ; \
+  cd /opt/mybuild ; \
+  git checkout -b mydev origin/release/1.1.0 ; \
+  git submodule sync ; \
+  git submodule update --init --recursive --jobs 0 ; \
+  CC=gcc-10, CXX=g++-10 nice python setup.py bdist_wheel --cpp_ext --cuda_ext ; \
+  cp -rf dist/* /opt/wheels ; \
+  rm -rf /opt/mybuild 
+  
+RUN $WITH_CONDA; set -eux ; \
+  pip install /opt/wheels/apex-*.whl
+
+RUN $WITH_CONDA; set -eux ; \
+  ROCM_VERSION_MAJOR=$(echo $ROCM_RELEASE | cut -d'.' -f1) ; \
+  ROCM_VERSION_MINOR=$(echo $ROCM_RELEASE | cut -d'.' -f2) ; \
+  PYTHON_VERSION_MAJOR=$(echo $PYTHON_VERSION | cut -d'.' -f1) ; \
+  PYTHON_VERSION_MINOR=$(echo $PYTHON_VERSION | cut -d'.' -f2) ; \
+  pip3 install --pre torchvision==0.17.2+rocm${ROCM_VERSION_MAJOR}.${ROCM_VERSION_MINOR} --index-url https://download.pytorch.org/whl/ ; \
+  pip3 install --pre torchdata==0.7.1 --index-url https://download.pytorch.org/whl/ ; \
+  pip3 install --pre torchtext==0.17.2 --index-url https://download.pytorch.org/whl/ ; \
+  pip3 install --pre torchaudio==${PYTORCH_VERSION}+rocm${ROCM_VERSION_MAJOR}.${ROCM_VERSION_MINOR} --index-url https://download.pytorch.org/whl/ ; \
+  true
+
+ENV RUSTUP_HOME /opt/rust
+ENV CARGO_HOME /opt/rust
+RUN set -eux ; \
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > /opt/rust.sh ; \
+  sh /opt/rust.sh -y --no-modify-path ; \
+  rm -rf /opt/rust.sh
+
+ENV PATH $PATH:/opt/rust/bin
+
+RUN $WITH_CONDA; set -eux ; \
+  ln -s $(which gcc-10) /opt/rust/bin/cc ; \
+  CC=gcc-10 CXX=g++-10 \
+  DS_BUILD_AIO=0 \
+  DS_BUILD_CCL_COMM=1 \
+  DS_BUILD_CPU_ADAM=0 \
+  DS_BUILD_CPU_LION=0 \
+  DS_BUILD_EVOFORMER_ATTN=0 \
+  DS_BUILD_FUSED_ADAM=1 \
+  DS_BUILD_FUSED_LION=1 \
+  DS_BUILD_CPU_ADAGRAD=0 \
+  DS_BUILD_FUSED_LAMB=1 \
+  DS_BUILD_QUANTIZER=0 \
+  DS_BUILD_RANDOM_LTD=0 \
+  DS_BUILD_SPARSE_ATTN=0 \
+  DS_BUILD_TRANSFORMER=0 \
+  DS_BUILD_TRANSFORMER_INFERENCE=0 \
+  DS_BUILD_STOCHASTIC_TRANSFORMER=1 \
+  pip install deepspeed==0.14.0 --global-option="build_ext" --global-option="-j32" ; \
+  ds_report ; \
+  true
+
+# Tested with flash-attention 2554f49
+RUN $WITH_CONDA; set -eux ; \
+  cd /opt ; \
+  curl -LO http://localhost:$SERVER_PORT/rocm-5.6.0.tar ; \
+  tar -xf rocm-5.6.0.tar ; \
+  \
+  cd $ROCM_PATH/bin ; \
+  curl -LO http://localhost:$SERVER_PORT/hipcc-flash-attention ; \
+  chmod +x hipcc-flash-attention ; \
+  mv hipcc hipcc.bak ; \
+  mv hipcc-flash-attention hipcc ; \
+  \
+  git clone --recursive https://github.com/ROCmSoftwarePlatform/flash-attention.git /opt/mybuild ; \
+  cd /opt/mybuild ; \
+  cp -rf benchmarks /opt/wheels/flash_attn-benchmarks ; \
+  \
+  rm -rf build ; \
+  CC=gcc-10 \
+  CXX=g++-10 \
+  GPU_ARCHS="gfx90a" \
+    python setup.py bdist_wheel ; \
+  cp -rf dist/* /opt/wheels ; \
+  \
+  rm -rf /opt/rocm-5.6.0* ; \
+  rm -rf $ROCM_PATH/bin/hipcc ; \
+  mv $ROCM_PATH/bin/hipcc.bak $ROCM_PATH/bin/hipcc ; \
+  rm -rf /opt/mybuild 
+
+RUN $WITH_CONDA; set -eux ; \
+  pip install /opt/wheels/flash_attn-*.whl
+
+#Tested with xformers 82368ac
+RUN $WITH_CONDA; set -eux ; \
+  cd /opt ; \
+  curl -LO http://localhost:$SERVER_PORT/rocm-5.7.1.tar ; \
+  tar -xf rocm-5.7.1.tar ; \
+  \
+  cd $ROCM_PATH/bin ; \
+  curl -LO http://localhost:$SERVER_PORT/hipcc-xformers ; \
+  chmod +x hipcc-xformers ; \
+  mv hipcc hipcc.bak ; \
+  mv hipcc-xformers hipcc ; \
+  \
+  git clone --recursive -b main https://github.com/ROCm/xformers /opt/mybuild ; \
+  cd /opt/mybuild ; \
+  \
+  rm -rf build ; \
+  CC=gcc-10 \
+  CXX=g++-10 \
+  HIP_ARCHITECTURES="gfx90a" \
+  PYTORCH_ROCM_ARCH="gfx90a" \
+  COMPILE_ROCM_PATH=/opt/rocm-5.7.1 \
+  MAX_JOBS=48 \
+    python setup.py bdist_wheel ; \
+  cp -rf dist/* /opt/wheels ; \
+  \
+  rm -rf /opt/rocm-5.7.1* ; \
+  rm -rf $ROCM_PATH/bin/hipcc ; \
+  mv $ROCM_PATH/bin/hipcc.bak $ROCM_PATH/bin/hipcc ; \
+  rm -rf /opt/mybuild 
+
+RUN $WITH_CONDA; set -eux ; \
+  pip install /opt/wheels/xformers-*.whl
+
+RUN $WITH_CONDA; set -eux ; \
+  pip install \
+    scipy==1.12.0 \
+    matplotlib==3.8.2 \
+    pandas==2.2.0 \
+    seaborn==0.13.2
+
+# Work around wierd interaction with python interpreter in Triton.
+RUN set -eux ; \
+  sed -i 's#mod, func, n_regs, n_spills#assert True; mod, func, n_regs, n_spills#g' /opt/miniconda3/envs/pytorch/lib/python3.10/site-packages/triton/compiler/compiler.py 
+
+
+#
+# rocAL dependencies
+#
+
+RUN $WITH_CONDA; set -eux ; \
+  pip install \
+  protobuf==3.20.3 \
+  pytest==7.3.1
+
+RUN set -eux ; \
+  sed -i 's/SLE_15_SP4/SLE_15_SP5/g' /etc/zypp/repos.d/myrepo4.repo ; \
+  zypper ar --no-gpgcheck -cfp 90 'https://ftp.gwdg.de/pub/linux/misc/packman/suse/openSUSE_Leap_$releasever/Essentials' packman-essentials ; \
+  zypper -n refresh ; \
+  zypper --no-gpg-checks -n install -y --force-resolution \
+    gtk2-devel ; \
+  zypper clean
+
+RUN set -eux ; \
+  zypper -n refresh ; \ 
+  zypper --no-gpg-checks -n install -y --force-resolution \
+    pkg-config \
+    inxi \
+    half \
+    mivisionx \
+    libjpeg8-devel \
+    libpng16-devel \ 
+    libtiff-devel \
+    libavc1394-devel \
+    unzip \
+    nasm \
+    yasm \
+    lmdb-devel \
+    jsoncpp-devel \
+    ffmpeg-4 \
+    libboost_headers1_75_0-devel \
+    libboost_filesystem1_75_0-devel \
+    libboost_system1_75_0-devel \
+    ffmpeg-4-libswscale-devel \
+    ffmpeg-4-libavcodec-devel \
+    ffmpeg-4-libavformat-devel \
+    ffmpeg-4-libavutil-devel \
+    migraphx-devel \
+    openssl-devel \
+    libsndfile-devel ;\
+  zypper clean
+
+RUN $WITH_CONDA; set -eux ; \
+  git clone -b 3.0.1 https://github.com/libjpeg-turbo/libjpeg-turbo.git /opt/rocal-deps-libjpeg-turbo-src ; \
+  cd /opt/rocal-deps-libjpeg-turbo-src ; \
+  mkdir build ; \
+  cd build ; \
+  CC=gcc-10 CXX=g++-10 \
+  cmake -DCMAKE_INSTALL_PREFIX=/opt/rocal-deps-libjpeg-turbo \
+        -DCMAKE_BUILD_TYPE=RELEASE \
+        -DENABLE_STATIC=FALSE \
+        -DCMAKE_INSTALL_DEFAULT_LIBDIR=lib \
+        -DWITH_JPEG8=TRUE .. ; \
+  nice make -j ; nice make install ; \
+  cd /opt ; rm -rf /opt/rocal-deps-libjpeg-turbo-src 
+
+ENV CMAKE_PREFIX_PATH /opt/rocal-deps-libjpeg-turbo:/opt/rocal-deps-libjpeg-turbo/lib
+
+RUN $WITH_CONDA; set -eux ; \
+  git clone -b v2.12.0 https://github.com/pybind/pybind11  /opt/rocal-deps-pybind11-src ; \
+  cd /opt/rocal-deps-pybind11-src ; \
+  mkdir build ; \
+  cd build ; \
+  CC=gcc-10 CXX=g++-10 \
+  cmake -DDOWNLOAD_CATCH=ON \
+        -DDOWNLOAD_EIGEN=ON \
+        -DCMAKE_INSTALL_PREFIX=/opt/rocal-deps-pybind .. ; \
+  nice make -j ; make install ; \
+  cd /opt ; rm -rf /opt/rocal-deps-pybind11-src 
+  
+ENV CMAKE_PREFIX_PATH $CMAKE_PREFIX_PATH:/opt/rocal-deps-pybind11
+
+RUN $WITH_CONDA; set -eux ; \
+  git clone https://github.com/Tencent/rapidjson.git /opt/rocal-deps-rapidjson-src ; \
+  cd /opt/rocal-deps-rapidjson-src ; \
+  git checkout -b mydev ab1842a ; \
+  mkdir build ; \
+  cd build ; \
+  CC=gcc-10 CXX=g++-10 \
+  cmake -DCMAKE_INSTALL_PREFIX=/opt/rocal-deps-rapidjson .. ; \
+  nice make -j ; make install ; \
+  cd /opt ; rm -rf /opt/rocal-deps-rapidjson-src 
+
+ENV CMAKE_PREFIX_PATH $CMAKE_PREFIX_PATH:/opt/rocal-deps-rapidjson
+
+RUN $WITH_CONDA; set -eux ; \
+  cd /opt ; \
+  curl -LO https://github.com/opencv/opencv/archive/refs/tags/4.6.0.tar.gz ; \
+  tar -xf 4.6.0.tar.gz ; \
+  rm -rf 4.6.0.tar.gz ; \
+  mv opencv-4.6.0 rocal-deps-opencv-src ; \
+  cd rocal-deps-opencv-src ; \
+  mkdir build ; \
+  cd /opt/rocal-deps-opencv-src/build ; rm -rf * ; \
+  CC=gcc-10 CXX=g++-10 \
+  cmake \
+    -D WITH_GTK=ON \
+    -D WITH_JPEG=ON \
+    -D BUILD_JPEG=ON \
+    -D WITH_OPENCL=OFF \
+    -D WITH_OPENCLAMDFFT=OFF \
+    -D WITH_OPENCLAMDBLAS=OFF \
+    -D WITH_VA_INTEL=OFF \
+    -D WITH_OPENCL_SVM=OFF  \
+    -D CMAKE_EXE_LINKER_FLAGS='-lffi' \
+    -D CMAKE_INSTALL_PREFIX=/opt/rocal-deps-opencv .. ; \
+  nice make -j ; make install ; \
+  cd /opt ; rm -rf /opt/rocal-deps-opencv-src
+
+ENV CMAKE_PREFIX_PATH $CMAKE_PREFIX_PATH:/opt/rocal-deps-opencv
+
+RUN $WITH_CONDA; set -eux ; \
+#  git clone -b release/rocm-rel-5.7.1.1 https://github.com/ROCm/rpp /opt/rocal-deps-rpp-src ; \
+  git clone https://github.com/ROCm/rpp /opt/rocal-deps-rpp-src ; \
+  cd /opt/rocal-deps-rpp-src ; \
+  git checkout -b mydev 9dcae9d ; \
+  mkdir /opt/rocal-deps-rpp-src/build ; \
+  cd /opt/rocal-deps-rpp-src/build ; \
+  rm -rf * ; \
+  cmake -D CMAKE_INSTALL_PREFIX=/opt/rocal-deps-rpp .. ; \
+  nice make -j ; make install ; \
+  cd /opt ; rm -rf /opt/rocal-deps-rpp-src
+
+ENV CMAKE_PREFIX_PATH $CMAKE_PREFIX_PATH:/opt/rocal-deps-rpp:/opt/rocal-deps-rpp/include/rpp
+
+RUN $WITH_CONDA; set -eux ; \
+  cd /opt ; \
+  curl -LO https://github.com/protocolbuffers/protobuf/archive/refs/tags/v3.20.3.tar.gz ; \
+  tar -xf v3.20.3.tar.gz ; \
+  rm -rf v3.20.3.tar.gz ; \
+  rm -rf /opt/rocal-deps-protobuf-src ; \
+  mv protobuf-3.20.3 rocal-deps-protobuf-src ; \
+  cd /opt/rocal-deps-protobuf-src ; \
+  ./autogen.sh ; \
+  cd /opt/rocal-deps-protobuf-src ; \
+  ln -s $(which gcc-10) gcc ; \
+  ln -s $(which g++-10) g++ ; \
+  PATH=$(pwd):$PATH \
+    ./configure --prefix=/opt/rocal-deps-protobuf ; \
+  PATH=$(pwd):$PATH \
+    nice make -j ; \
+    PATH=$(pwd):$PATH \
+    nice make -j install ; \
+  cd /opt ; rm -rf /opt/rocal-deps-protobuf-src
+
+ENV CMAKE_PREFIX_PATH $CMAKE_PREFIX_PATH:/opt/rocal-deps-protobuf
+
+RUN $WITH_CONDA; set -eux ; \
+#  git clone -b rocm-5.7.1 https://github.com/ROCm/MIVisionX /opt/rocal-deps-mivisionx-src ; \
+  git clone https://github.com/ROCm/MIVisionX /opt/rocal-deps-mivisionx-src ; \
+  cd /opt/rocal-deps-mivisionx-src ; \
+  git checkout -b mydef b2f7f6e ; \
+  mkdir /opt/rocal-deps-mivisionx-src/build ; \
+  cd /opt/rocal-deps-mivisionx-src/build ; \
+  rm -rf * ; \
+  CC=clang CXX=clang++ \
+  CMAKE_MODULE_PATH=/opt/rocm-5.6.1/lib/cmake/hip \
+    cmake -D CMAKE_INSTALL_PREFIX=/opt/rocal-deps-mivisionx \
+      -DROCAL=OFF \
+      -DCMAKE_FIND_DEBUG_MODE=0 .. ; \
+  nice make -j ; make install ; \
+  cd /opt ; rm -rf /opt/rocal-deps-mivisionx-src
+
+ENV CMAKE_PREFIX_PATH $CMAKE_PREFIX_PATH:/opt/rocal-deps-mivisionx
+
+#
+# rocAL image processing library
+#
+ARG ROCAL_VERSION
+
+RUN $WITH_CONDA; set -eux ; \
+  git clone --recursive https://github.com/ROCm/rocAL /opt/mybuild ; \
+  cd /opt/mybuild ; \
+  git checkout -b mydev $ROCAL_VERSION ; \
+  mkdir /opt/mybuild/build-hip ; \
+  true
+
+RUN $WITH_CONDA; set -eux ; \
+    \
+    mkdir /opt/rocm-backup ; \
+    mv $ROCM_PATH/lib/libopenvx.so $ROCM_PATH/lib/libvx* /opt/rocm-backup ; \
+    \
+    cd  /opt/mybuild/build-hip  ; rm -rf * ; \
+    CC=clang CXX=clang++ \
+    MIVisionX_PATH=/opt/rocal-deps-mivisionx \
+    CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH:/opt/rocal-deps-pybind/share/cmake/pybind11 \
+      cmake \
+        -DGPU_TARGETS=gfx90a \
+        -DAMDGPU_TARGETS=gfx90a \
+        -DCMAKE_EXE_LINKER_FLAGS='-lffi /opt/rocal-deps-libjpeg-turbo/lib/libjpeg.so' \
+        -DCMAKE_SHARED_LINKER_FLAGS='-lffi /opt/rocal-deps-libjpeg-turbo/lib/libjpeg.so' \
+        -DCMAKE_INSTALL_PREFIX=/opt/rocal \
+        -DCMAKE_INSTALL_PREFIX_PYTHON=/opt/rocal/lib \
+        -DCMAKE_FIND_DEBUG_MODE=0 .. ; \
+    \
+    CC=clang CXX=clang++ \
+    CPATH=/opt/rocal-deps-rapidjson/include:/opt/rocal-deps-pybind/include \
+      nice cmake --build . --target PyPackageInstall -j ;  \
+      nice make -j install ; \
+    mkdir /opt/miniconda3/envs/pytorch/lib/python3.10/site-packages/unused ; \
+    mv /opt/miniconda3/envs/pytorch/lib/python3.10/site-packages/rocal_pybind.*.so  /opt/miniconda3/envs/pytorch/lib/python3.10/site-packages/unused ; \
+    ln -s /opt/rocal/lib/rocal_pybind.*.so /opt/miniconda3/envs/pytorch/lib/python3.10/site-packages ; \
+    cp -rf *.whl /opt/wheels; \
+    cd /opt ; rm -rf /opt/rocm-backup 
+    
+#/opt/mybuild
+
+ENV LD_LIBRARY_PATH \
+/opt/rocal/lib:\
+/opt/rocal-deps-libjpeg-turbo/lib:\
+/opt/rocal-deps-mivisionx/lib:\
+/opt/rocal-deps-opencv/lib64:\
+/opt/rocal-deps-protobuf/lib:\
+/opt/rocal-deps-rapidjson/lib:\
+/opt/rocal-deps-rpp/lib:$LD_LIBRARY_PATH
