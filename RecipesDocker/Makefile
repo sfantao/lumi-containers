@@ -31,6 +31,7 @@ pytorch_deps += pytorch/build-rocm-6.2.4-python-3.12-pytorch-v2.5.1.done
 pytorch_deps += pytorch/build-rocm-6.2.4-python-3.12-pytorch-v2.6.0.done
 pytorch_deps += pytorch/build-rocm-6.2.4-python-3.12-pytorch-v2.7.0.done
 pytorch_deps += pytorch/build-rocm-6.2.4-python-3.12-pytorch-v2.7.1.done
+pytorch_deps += pytorch/build-rocm-6.2.4-python-3.12-pytorch-v2.7.1-te.done
 pytorch: $(pytorch_deps)
 
 tensorflow: tensorflow/build-rocm-6.2.3-python-3.10-tensorflow-2.16.2-horovod-0.28.1.done
